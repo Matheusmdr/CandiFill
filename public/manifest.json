@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "CandiFill",
+  "version": "1.0.0",
+  "description": "Preenchimento inteligente de formulários de vagas de emprego (Gupy, Inhire, Greenhouse, Lever, Workday) com 1 clique.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "matheusmdr@hotmail.com",
+      "strict_min_version": "121.0"
+    }
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://generativelanguage.googleapis.com/*",
+    "https://api.openai.com/*"
+  ],
+  "action": {
+    "default_popup": "index.html?view=popup",
+    "default_title": "CandiFill",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_ui": {
+    "page": "index.html?view=tab",
+    "open_in_tab": true
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "scripts": ["background.js"],
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "autofill_page": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Period",
+        "mac": "Command+Shift+Period"
+      },
+      "description": "Preencher formulário na aba ativa com CandiFill"
+    }
+  }
+}

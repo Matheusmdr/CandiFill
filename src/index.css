@@ -1,0 +1,345 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --theme-bg-main: #09090b;
+    --theme-bg-surface: #141417;
+    --theme-bg-elevated: #1f1f23;
+    --theme-card-bg: rgba(22, 22, 26, 0.7);
+    --theme-card-border: rgba(255, 255, 255, 0.08);
+    --theme-input-bg: rgba(10, 10, 12, 0.75);
+    --theme-input-focus-bg: rgba(9, 9, 11, 0.95);
+    --theme-border: rgba(63, 63, 70, 0.6);
+    --theme-accent-text: #34d399;
+    --theme-accent-bg: #059669;
+    --theme-accent-hover: #10b981;
+    --theme-accent-subtle: rgba(16, 185, 129, 0.16);
+    --theme-accent-border: rgba(16, 185, 129, 0.4);
+    --theme-glow: 0 0 35px -5px rgba(16, 185, 129, 0.3);
+    --theme-accent-gradient: linear-gradient(135deg, #059669, #34d399);
+  }
+
+  body {
+    background-color: transparent;
+    color: #f4f4f5;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ========================================================
+   THEME DEFINITIONS & OVERRIDES
+   ======================================================== */
+
+/* --- 1. MIDNIGHT CYBER --- */
+[data-theme="midnight"] {
+  --theme-bg-main: #060b13;
+  --theme-bg-surface: #0a1424;
+  --theme-bg-elevated: #10213b;
+  --theme-card-bg: rgba(10, 20, 36, 0.72);
+  --theme-card-border: rgba(56, 189, 248, 0.15);
+  --theme-input-bg: rgba(6, 11, 19, 0.85);
+  --theme-input-focus-bg: rgba(6, 13, 23, 0.95);
+  --theme-border: rgba(30, 58, 102, 0.7);
+  --theme-accent-text: #38bdf8;
+  --theme-accent-bg: #0284c7;
+  --theme-accent-hover: #0ea5e9;
+  --theme-accent-subtle: rgba(56, 189, 248, 0.18);
+  --theme-accent-border: rgba(56, 189, 248, 0.45);
+  --theme-glow: 0 0 35px -5px rgba(56, 189, 248, 0.35);
+  --theme-accent-gradient: linear-gradient(135deg, #0284c7, #38bdf8);
+}
+
+/* --- 2. NEON AMETHYST --- */
+[data-theme="amethyst"] {
+  --theme-bg-main: #0a0614;
+  --theme-bg-surface: #140d26;
+  --theme-bg-elevated: #22143e;
+  --theme-card-bg: rgba(20, 13, 38, 0.72);
+  --theme-card-border: rgba(192, 132, 252, 0.15);
+  --theme-input-bg: rgba(10, 6, 20, 0.85);
+  --theme-input-focus-bg: rgba(14, 8, 28, 0.95);
+  --theme-border: rgba(76, 38, 120, 0.7);
+  --theme-accent-text: #c084fc;
+  --theme-accent-bg: #9333ea;
+  --theme-accent-hover: #a855f7;
+  --theme-accent-subtle: rgba(192, 132, 252, 0.18);
+  --theme-accent-border: rgba(192, 132, 252, 0.45);
+  --theme-glow: 0 0 35px -5px rgba(192, 132, 252, 0.35);
+  --theme-accent-gradient: linear-gradient(135deg, #9333ea, #c084fc);
+}
+
+/* --- 3. AMBER SUNSET --- */
+[data-theme="amber"] {
+  --theme-bg-main: #0c0905;
+  --theme-bg-surface: #171108;
+  --theme-bg-elevated: #281c0e;
+  --theme-card-bg: rgba(23, 17, 8, 0.72);
+  --theme-card-border: rgba(245, 158, 11, 0.15);
+  --theme-input-bg: rgba(12, 9, 5, 0.85);
+  --theme-input-focus-bg: rgba(18, 13, 7, 0.95);
+  --theme-border: rgba(95, 68, 30, 0.7);
+  --theme-accent-text: #fbbf24;
+  --theme-accent-bg: #d97706;
+  --theme-accent-hover: #f59e0b;
+  --theme-accent-subtle: rgba(245, 158, 11, 0.18);
+  --theme-accent-border: rgba(245, 158, 11, 0.45);
+  --theme-glow: 0 0 35px -5px rgba(245, 158, 11, 0.35);
+  --theme-accent-gradient: linear-gradient(135deg, #d97706, #fbbf24);
+}
+
+/* --- 4. PURE OLED --- */
+[data-theme="oled"] {
+  --theme-bg-main: #000000;
+  --theme-bg-surface: #09090b;
+  --theme-bg-elevated: #151518;
+  --theme-card-bg: rgba(9, 9, 11, 0.85);
+  --theme-card-border: rgba(255, 255, 255, 0.12);
+  --theme-input-bg: rgba(0, 0, 0, 0.95);
+  --theme-input-focus-bg: rgba(5, 5, 5, 1);
+  --theme-border: rgba(55, 55, 60, 0.9);
+  --theme-accent-text: #ffffff;
+  --theme-accent-bg: #27272a;
+  --theme-accent-hover: #3f3f46;
+  --theme-accent-subtle: rgba(255, 255, 255, 0.12);
+  --theme-accent-border: rgba(255, 255, 255, 0.4);
+  --theme-glow: 0 0 35px -5px rgba(255, 255, 255, 0.25);
+  --theme-accent-gradient: linear-gradient(135deg, #3f3f46, #a1a1aa);
+}
+
+/* --- 5. CLEAN LIGHT --- */
+[data-theme="light"] {
+  color-scheme: light;
+  --theme-bg-main: #f8fafc;
+  --theme-bg-surface: #ffffff;
+  --theme-bg-elevated: #f1f5f9;
+  --theme-card-bg: rgba(255, 255, 255, 0.85);
+  --theme-card-border: rgba(203, 213, 225, 0.8);
+  --theme-input-bg: #ffffff;
+  --theme-input-focus-bg: #ffffff;
+  --theme-border: #cbd5e1;
+  --theme-accent-text: #0284c7;
+  --theme-accent-bg: #0284c7;
+  --theme-accent-hover: #0369a1;
+  --theme-accent-subtle: rgba(2, 132, 199, 0.12);
+  --theme-accent-border: rgba(2, 132, 199, 0.35);
+  --theme-glow: 0 0 35px -5px rgba(2, 132, 199, 0.2);
+  --theme-accent-gradient: linear-gradient(135deg, #0284c7, #38bdf8);
+}
+
+/* ========================================================
+   THEME COLOR REMAPPING (all themes override zinc/emerald)
+   ======================================================== */
+[data-theme="midnight"],
+[data-theme="amethyst"],
+[data-theme="amber"],
+[data-theme="oled"] {
+  & .bg-zinc-950, & [class*="bg-zinc-950"] { background-color: var(--theme-bg-main) !important; }
+  & .bg-zinc-900, & [class*="bg-zinc-900"] { background-color: var(--theme-bg-surface) !important; }
+  & .bg-zinc-800, & [class*="bg-zinc-800"] { background-color: var(--theme-bg-elevated) !important; }
+  & [class*="border-zinc-800"], & [class*="border-zinc-700"] { border-color: var(--theme-border) !important; }
+  & [class*="text-emerald-"] { color: var(--theme-accent-text) !important; }
+  & .bg-emerald-600, & [class*="bg-emerald-600"]:not([class*="/"]) { background-color: var(--theme-accent-bg) !important; }
+  & [class*="hover:bg-emerald-500"]:hover, & [class*="hover:bg-emerald-600"]:hover { background-color: var(--theme-accent-hover) !important; }
+  & [class*="bg-emerald-500/"], & [class*="bg-emerald-600/"], & [class*="bg-emerald-950/"] { background-color: var(--theme-accent-subtle) !important; }
+  & [class*="border-emerald-"] { border-color: var(--theme-accent-border) !important; }
+  & [class*="focus:border-emerald-500"]:focus { border-color: var(--theme-accent-text) !important; }
+  & .glass-panel, & .spotlight-glass { background: var(--theme-card-bg) !important; border-color: var(--theme-border) !important; }
+  & .glow-emerald { box-shadow: var(--theme-glow) !important; }
+}
+
+/* Light theme needs extra text overrides */
+[data-theme="light"] {
+  & , & body { color: #0f172a !important; }
+  & .text-zinc-100, & .text-zinc-200, & .text-zinc-300 { color: #0f172a !important; }
+  & .text-zinc-400, & .text-zinc-500 { color: #64748b !important; }
+  & input, & textarea, & select { color: #0f172a !important; }
+  & input::placeholder, & textarea::placeholder { color: #94a3b8 !important; }
+  & .bg-zinc-950, & [class*="bg-zinc-950"] { background-color: var(--theme-bg-main) !important; }
+  & .bg-zinc-900, & [class*="bg-zinc-900"] { background-color: var(--theme-bg-surface) !important; }
+  & .bg-zinc-800, & [class*="bg-zinc-800"] { background-color: var(--theme-bg-elevated) !important; }
+  & [class*="border-zinc-800"], & [class*="border-zinc-700"] { border-color: var(--theme-border) !important; }
+  & [class*="text-emerald-"] { color: var(--theme-accent-text) !important; }
+  & .bg-emerald-600, & [class*="bg-emerald-600"]:not([class*="/"]) { background-color: var(--theme-accent-bg) !important; color: #fff !important; }
+  & [class*="hover:bg-emerald-500"]:hover, & [class*="hover:bg-emerald-600"]:hover { background-color: var(--theme-accent-hover) !important; }
+  & [class*="bg-emerald-500/"], & [class*="bg-emerald-600/"], & [class*="bg-emerald-950/"] { background-color: var(--theme-accent-subtle) !important; }
+  & [class*="border-emerald-"] { border-color: var(--theme-accent-border) !important; }
+  & .glass-panel, & .spotlight-glass {
+    background: rgba(255, 255, 255, 0.94) !important;
+    border-color: var(--theme-border) !important;
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.1) !important;
+  }
+  & .glow-emerald { box-shadow: var(--theme-glow) !important; }
+}
+
+/* ========================================================
+   COMPONENT CLASSES
+   ======================================================== */
+
+/* Ambient mesh background with accent gradient lighting */
+.bg-app-ambient {
+  background-color: var(--theme-bg-main);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, var(--theme-accent-subtle) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 45% at 100% 100%, rgba(255, 255, 255, 0.02) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 0% 80%, var(--theme-accent-subtle) 0%, transparent 55%);
+}
+
+/* Elevated glass card with inner top highlight + drop shadow */
+.card-elevated {
+  background: var(--theme-card-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--theme-card-border);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+    0 8px 25px -8px rgba(0, 0, 0, 0.5);
+  border-radius: 1rem;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.card-elevated:hover {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+    0 12px 35px -8px rgba(0, 0, 0, 0.55);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Global tactile input styling — applies to every input/textarea/select in the app */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+textarea,
+select {
+  background-color: var(--theme-input-bg) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.35), 0 1px 0 0 rgba(255, 255, 255, 0.03);
+  transition: all 0.15s ease-out !important;
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+textarea:focus,
+select:focus {
+  outline: none !important;
+  border-color: var(--theme-accent-text) !important;
+  box-shadow:
+    inset 0 2px 4px 0 rgba(0, 0, 0, 0.35),
+    0 0 0 3px var(--theme-accent-subtle) !important;
+  background-color: var(--theme-input-focus-bg) !important;
+}
+
+/* Spotlight HUD Raycast Glass */
+.spotlight-glass {
+  background: rgba(14, 14, 18, 0.90);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.14),
+    0 25px 60px -15px rgba(0, 0, 0, 0.85),
+    var(--theme-glow);
+}
+
+/* Classic Glass Panel */
+.glass-panel {
+  background: rgba(18, 18, 23, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+}
+
+.glass-panel-subtle {
+  background: rgba(28, 28, 35, 0.65);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glow-emerald {
+  box-shadow: var(--theme-glow);
+}
+
+/* Header glass */
+.header-glass {
+  background: rgba(14, 14, 18, 0.65);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Sidebar glass */
+.sidebar-glass {
+  background: rgba(14, 14, 18, 0.4);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ========================================================
+   UTILITIES & ANIMATIONS
+   ======================================================== */
+
+/* Subtle scale-in entrance animation */
+@keyframes scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.animate-scale-in {
+  animation: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Fade-in for content tabs */
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in {
+  animation: fade-in-up 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* No scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Scrollbars modernos e discretos */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(113, 113, 122, 0.3);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(161, 161, 170, 0.55);
+}
+
+/* Accent gradient text */
+.accent-gradient-text {
+  background: var(--theme-accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
