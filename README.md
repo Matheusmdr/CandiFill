@@ -2,7 +2,7 @@
 
 CandiFill is a Firefox extension that helps you fill out job applications using your saved professional profile and reusable answers. Your profile stays in the browser, and you review new answers before saving them.
 
-> **Project status:** preparing for its first public release. The Firefox Add-ons installation link will be added after Mozilla approves the listing. Until then, download the prebuilt package or follow the source installation steps below.
+> **Project status:** GitHub builds are available. The Firefox Add-ons installation link will be added after Mozilla approves the listing. Until then, download the prebuilt package or follow the source installation steps below.
 
 ## Features
 
@@ -24,11 +24,11 @@ Firefox removes temporary add-ons when it closes. A permanent installation will 
 
 ## Install from source
 
-The first release is being prepared for **Firefox Add-ons (AMO)**. Until the listing is approved, you can load a temporary build from source. Firefox removes temporary add-ons when it closes.
+Permanent installation through **Firefox Add-ons (AMO)** is pending review. Until then, you can load a temporary build from source. Firefox removes temporary add-ons when it closes.
 
 If you used an earlier development build, export your profile as JSON before installing this version, then import that file into CandiFill. This release uses a new extension identity and therefore has separate Firefox storage.
 
-Requirements: Firefox 121 or later, Node.js 22.12 or later, and npm.
+Requirements: Firefox 140 or later, Node.js 22.12 or later, and npm.
 
 1. Download this repository as a ZIP and extract it, or clone it with Git.
 2. Open a terminal in the project folder and install dependencies:
@@ -64,14 +64,15 @@ npm run build
 
 ## Browser support
 
-The first release targets Firefox 121 and later. Compatibility with individual job application sites and other Firefox-based browsers has not been fully verified yet. CandiFill does not claim universal support for every application form.
+The first release targets Firefox 140 and later. Compatibility with individual job application sites and other Firefox-based browsers has not been fully verified yet. CandiFill does not claim universal support for every application form.
 
 ## Privacy and permissions
 
 - Your profiles and resumes are stored in the extension's local browser storage. Contact details, education, AI settings, and theme are shared across profiles; role-specific information stays with each profile.
 - Answers waiting for your review are kept in the extension session, associated with the tab and site, for up to 15 minutes. They are not added to your profile unless you confirm.
+- Firefox asks for data-sharing consent before the first AI request for each data category. Declining leaves local autofill and other local features available.
 - AI features send the text needed for the requested action directly to your selected provider (Gemini or OpenAI). Tailoring a profile sends the job description and the active profile's professional summaries and work history; it does not send contact details, the attached resume, or saved answers. Model discovery sends your API key to the provider; checking a selected model sends a short test prompt and may incur usage charges. CandiFill does not run its own AI server.
-- The content script accesses webpages to detect and fill forms. Passive answer capture is limited to pages recognized as job applications. See the [Privacy Policy](docs/PRIVACIDADE.md) for details and limitations.
+- CandiFill injects its content script into the active page only after you invoke the extension or keyboard shortcut. Passive answer capture is limited to pages recognized as job applications. See the [Privacy Policy](docs/PRIVACIDADE.md) for details and limitations.
 
 ## Issues and support
 

@@ -3,6 +3,8 @@ export type Locale = 'pt-BR' | 'en';
 export const LOCALE_STORAGE_KEY = 'candifill_locale_v1';
 
 const englishMessages: Record<string, string> = {
+  'O consentimento para enviar dados ao provedor foi recusado. Os recursos locais continuam disponíveis.': 'Consent to send data to the provider was declined. Local features remain available.',
+  'O Firefox não conseguiu abrir o pedido de consentimento. Tente novamente.': 'Firefox could not open the consent prompt. Please try again.',
   'Adicionar': 'Add',
   'Adicionar Campo': 'Add field',
   'API Key *': 'API key *',

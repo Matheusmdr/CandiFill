@@ -1,5 +1,6 @@
 import { CandidateProfile } from '../types/profile';
 import { normalizeCandidateProfile } from './storage';
+import { requestFirefoxDataConsent } from './firefoxDataConsent';
 
 /**
  * Limpa resíduos de conversa de IA (introduções como "Aqui está:", aspas, blocos de citação, etc.)
@@ -62,6 +63,7 @@ export interface EnhanceAiPayload {
  * Aprimora resumos ou textos profissionais com LLM (Gemini ou OpenAI)
  */
 export async function enhanceTextWithAi(payload: EnhanceAiPayload): Promise<string> {
+  await requestFirefoxDataConsent(['authenticationInfo', 'personallyIdentifyingInfo']);
   const strictSystemInstruction =
     'Você é um assistente estritamente focado em aprimorar textos de candidatos para currículos e formulários de emprego.\n' +
     'REGRAS INEGOCIÁVEIS:\n' +
@@ -133,6 +135,7 @@ export interface ParseResumePayload {
  * Converte o texto extraído de um currículo PDF em um CandidateProfile estruturado
  */
 export async function parseResumeWithAi(payload: ParseResumePayload): Promise<CandidateProfile> {
+  await requestFirefoxDataConsent(['authenticationInfo', 'personallyIdentifyingInfo']);
   const sysPrompt = `Você é um assistente especialista em recrutamento e RH. Use somente fatos presentes no currículo; não invente, infira nem complete dados ausentes. Para campos sem evidência explícita, retorne string vazia ou array vazio. Resumos e apresentação devem permanecer fiéis às experiências e qualificações descritas. Retorne ESTRITAMENTE um objeto JSON válido (sem comentários, sem blocos markdown extras) com o seguinte esquema:
 {
   "personal": {
@@ -317,6 +320,7 @@ export async function deriveProfileFromJobDescription(
 ): Promise<DerivedProfileSuggestion> {
   if (!payload.apiKey.trim()) throw new Error('Configure sua chave de API nas configurações para criar um perfil derivado.');
   if (!payload.jobDescription.trim()) throw new Error('Cole a descrição da vaga para continuar.');
+  await requestFirefoxDataConsent(['authenticationInfo', 'personallyIdentifyingInfo', 'websiteContent']);
 
   const profileContext = {
     currentHeadline: payload.profile.personal.headline,

@@ -51,7 +51,6 @@ const pendingAnswerCandidates = new Map<string, PendingCapturedAnswer>();
 let answerCaptureActive = false;
 let answerCaptureRenderTimer: ReturnType<typeof setTimeout> | undefined;
 let answerCaptureTimer: ReturnType<typeof setTimeout> | undefined;
-let answerReviewStageTimer: ReturnType<typeof setTimeout> | undefined;
 let answerReviewOpen = false;
 
 function sendAnswerReviewMessage(action: string): void {
@@ -75,19 +74,15 @@ function sendAnswerReviewMessage(action: string): void {
 }
 
 function clearStagedAnswerReview(): void {
-  if (answerReviewStageTimer) clearTimeout(answerReviewStageTimer);
-  answerReviewStageTimer = undefined;
   sendAnswerReviewMessage('JOBFILL_CLEAR_ANSWER_REVIEW');
 }
 
-function stageAnswerReviewSoon(): void {
-  if (answerReviewStageTimer) clearTimeout(answerReviewStageTimer);
-  answerReviewStageTimer = setTimeout(() => {
-    answerReviewStageTimer = undefined;
-    sendAnswerReviewMessage(pendingAnswerCandidates.size > 0
-      ? 'JOBFILL_STAGE_ANSWER_REVIEW'
-      : 'JOBFILL_CLEAR_ANSWER_REVIEW');
-  }, 200);
+function stageAnswerReview(): void {
+  // Persist each eligible edit immediately. A debounced write can be lost when
+  // the user submits a form and the page navigates before the timer fires.
+  sendAnswerReviewMessage(pendingAnswerCandidates.size > 0
+    ? 'JOBFILL_STAGE_ANSWER_REVIEW'
+    : 'JOBFILL_CLEAR_ANSWER_REVIEW');
 }
 
 async function restoreStagedAnswerReview(): Promise<void> {
@@ -262,7 +257,7 @@ function renderAnswerReview(): void {
       for (const candidate of selected) pendingAnswerCandidates.delete(getSavedAnswerKey(candidate.question, candidate.site));
       answerCaptureFields = new WeakSet<Element>();
       answerReviewOpen = false;
-      if (pendingAnswerCandidates.size > 0) stageAnswerReviewSoon();
+      if (pendingAnswerCandidates.size > 0) stageAnswerReview();
       else clearStagedAnswerReview();
       renderAnswerReview();
       showFloatingToast(tp('{count} resposta salva no CandiFill.', '{count} respostas salvas no CandiFill.', selected.length), true);
@@ -301,14 +296,10 @@ function collectAnswerCandidate(element: Element): void {
   const key = getSavedAnswerKey(question, site);
   if (!answer || answer.length > 5000) {
     pendingAnswerCandidates.delete(key);
-    if (answerReviewStageTimer) clearTimeout(answerReviewStageTimer);
-    answerReviewStageTimer = setTimeout(() => {
-      answerReviewStageTimer = undefined;
-      sendAnswerReviewMessage(pendingAnswerCandidates.size > 0
-        ? 'JOBFILL_STAGE_ANSWER_REVIEW'
-        : 'JOBFILL_CLEAR_ANSWER_REVIEW');
-      renderAnswerReview();
-    }, 200);
+    sendAnswerReviewMessage(pendingAnswerCandidates.size > 0
+      ? 'JOBFILL_STAGE_ANSWER_REVIEW'
+      : 'JOBFILL_CLEAR_ANSWER_REVIEW');
+    renderAnswerReview();
     return;
   }
 
@@ -323,7 +314,7 @@ function collectAnswerCandidate(element: Element): void {
     destination: pendingAnswerCandidates.get(key)?.destination || profileField?.key || 'saved-answer',
     selectedForSave: pendingAnswerCandidates.get(key)?.selectedForSave || false,
   });
-  stageAnswerReviewSoon();
+  stageAnswerReview();
   if (answerCaptureRenderTimer) clearTimeout(answerCaptureRenderTimer);
   answerCaptureRenderTimer = setTimeout(renderAnswerReview, 350);
 }
@@ -368,8 +359,6 @@ document.addEventListener('submit', (event) => {
 
   getTrackedAnswerCaptureFields(form, answerCaptureFields).forEach(collectAnswerCandidate);
   if (pendingAnswerCandidates.size > 0) {
-    if (answerReviewStageTimer) clearTimeout(answerReviewStageTimer);
-    answerReviewStageTimer = undefined;
     sendAnswerReviewMessage('JOBFILL_STAGE_ANSWER_REVIEW');
     answerReviewOpen = true;
     renderAnswerReview();

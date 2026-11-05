@@ -17,7 +17,6 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { extractText } from 'unpdf';
 import { CandidateProfile, CandidateProfileCollection, AiConfig, ResumeFile } from '../types/profile';
 import { parseCandidateProfileImport } from '../services/storage';
 import { parseResumeWithAi } from '../services/ai';
@@ -103,6 +102,7 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
       setIsReadingPdf(true);
       try {
         const buffer = await file.arrayBuffer();
+        const { extractText } = await import('unpdf');
         const { text, totalPages } = await extractText(buffer);
         const fullText = Array.isArray(text) ? text.join('\n\n') : String(text || '');
 

@@ -1,3 +1,5 @@
+import { requestFirefoxDataConsent } from './firefoxDataConsent';
+
 export interface AvailableAiModel {
   id: string;
   displayName: string;
@@ -48,6 +50,7 @@ export async function listAvailableAiModels(
   apiKey: string
 ): Promise<AvailableAiModel[]> {
   if (!apiKey.trim()) throw new Error('API_KEY_REQUIRED');
+  await requestFirefoxDataConsent(['authenticationInfo']);
 
   if (provider === 'gemini') {
     const models = new Map<string, AvailableAiModel>();
@@ -112,6 +115,7 @@ export async function testAiModel(
 ): Promise<void> {
   if (!apiKey.trim()) throw new Error('API_KEY_REQUIRED');
   if (!model.trim()) throw new Error('MODEL_REQUIRED');
+  await requestFirefoxDataConsent(['authenticationInfo']);
 
   let response: Response;
   if (provider === 'gemini') {

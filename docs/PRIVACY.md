@@ -25,11 +25,11 @@ When you create a profile tailored to a job description, CandiFill sends the job
 
 When you ask CandiFill to find available models, it sends your API key to the selected provider to retrieve the models accessible to that key; no profile or job application text is included in this lookup. If you choose **Test compatibility**, CandiFill sends a short test prompt to the selected model. The provider may count this request toward your usage or charges.
 
-The provider also receives the API key needed to authenticate the request. CandiFill does not send this text to providers until you use an AI feature. Further handling is governed by the selected provider's terms and privacy policy.
+The provider also receives the API key needed to authenticate the request. On Firefox 140 and later, Firefox asks for data-sharing consent before the first request for each relevant data category. If you decline, that request is not sent and local features remain available. CandiFill does not send this text to providers until you use an AI feature. Further handling is governed by the selected provider's terms and privacy policy.
 
 ## Data from job application pages
 
-The content script can be loaded on webpages to enable form filling. Passive answer capture is armed only on pages with job application signals; you can also arm it by using CandiFill manually. The script identifies form fields and may read an eligible answer you typed to create a local suggestion. CandiFill does not submit forms automatically or send page values to its own server. Values identified as sensitive are excluded, but the filter may miss some; review suggestions carefully. The extension primarily works with `input`, `textarea`, and `select` fields; special controls may not be processed.
+The content script is injected into the active webpage only after you invoke CandiFill or its keyboard shortcut. Passive answer capture is armed only on pages with job application signals; you can also arm it by using CandiFill manually. The script identifies form fields and may read an eligible answer you typed to create a local suggestion. CandiFill does not submit forms automatically or send page values to its own server. Values identified as sensitive are excluded, but the filter may miss some; review suggestions carefully. The extension primarily works with `input`, `textarea`, and `select` fields; special controls may not be processed.
 
 ## Sharing and analytics
 

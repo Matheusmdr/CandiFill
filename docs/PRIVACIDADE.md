@@ -16,6 +16,8 @@ O backup JSON é gerado localmente para você baixar. Ele pode conter todos os p
 
 ## Dados enviados a provedores de IA
 
+No Firefox 140 ou superior, o navegador pede consentimento antes do primeiro envio de cada categoria de dados necessária. Se você recusar, a solicitação não será enviada e os recursos locais continuarão disponíveis.
+
 O CandiFill não tem um servidor próprio de IA. Se você configurar uma chave e acionar um recurso de IA, o texto necessário é enviado do navegador diretamente ao provedor selecionado:
 
 - **Google Gemini:** texto do currículo durante a extração, ou o texto profissional selecionado para refinamento.
@@ -29,7 +31,7 @@ O provedor também recebe a chave de API necessária para autenticar a solicita�
 
 ## Dados de páginas de candidatura
 
-O content script pode ser carregado em páginas de vários sites para habilitar o preenchimento. A captura passiva de respostas só é armada quando a página tem sinais de candidatura; você também pode armá-la ao acionar o CandiFill manualmente. O script identifica campos de formulário e pode ler uma resposta elegível que você digitou para montar uma sugestão local. O CandiFill não envia formulários automaticamente nem envia os valores da página a um servidor próprio. Os valores sensíveis reconhecidos pelo filtro são excluídos, mas o filtro pode falhar; revise as sugestões. A extensão trabalha principalmente com `input`, `textarea` e `select`; controles especiais podem não ser processados.
+O content script é injetado na página ativa somente depois que você aciona o CandiFill ou o atalho de teclado. A captura passiva de respostas é armada apenas em páginas com sinais de candidatura; você também pode ativá-la ao usar o CandiFill. O script identifica campos de formulário e pode ler respostas elegíveis para criar uma sugestão local. O CandiFill não envia formulários nem os valores da página a um servidor próprio. Filtros podem deixar passar informações sensíveis, então revise as sugestões. A extensão trabalha principalmente com `input`, `textarea` e `select`.
 
 ## Compartilhamento e telemetria
 
