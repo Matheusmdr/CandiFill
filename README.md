@@ -17,7 +17,7 @@ Read the [Privacy Policy in English](docs/PRIVACY.md) or [Portuguese](docs/PRIVA
 
 ## Install a prebuilt package
 
-Download the [CandiFill Firefox package](releases/firefox/candifill-firefox-1.0.0.zip) and extract it. In Firefox, open `about:debugging#/runtime/this-firefox`, select **Load Temporary Add-on**, and choose `manifest.json` from the extracted folder.
+Download the latest [CandiFill Firefox package](https://github.com/Matheusmdr/CandiFill/releases/latest/download/candifill-firefox.zip) and extract it. In Firefox, open `about:debugging#/runtime/this-firefox`, select **Load Temporary Add-on**, and choose `manifest.json` from the extracted folder.
 
 Firefox removes temporary add-ons when it closes. A permanent installation will be available after the Firefox Add-ons listing is approved.
 
