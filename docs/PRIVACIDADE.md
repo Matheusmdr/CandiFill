@@ -16,7 +16,7 @@ O backup JSON é gerado localmente para você baixar. Ele pode conter todos os p
 
 ## Dados enviados a provedores de IA
 
-No Firefox 140 ou superior, o navegador pede consentimento antes do primeiro envio de cada categoria de dados necessária. Se você recusar, a solicitação não será enviada e os recursos locais continuarão disponíveis.
+Antes de cada ação de IA, o CandiFill informa quais dados e qual provedor serão usados; a solicitação só é enviada após você clicar na ação. No Firefox para computador 140+ e no Firefox para Android 142+, o navegador também pede consentimento antes do primeiro envio de cada categoria de dados necessária. Se você recusar, a solicitação não será enviada e os recursos locais continuarão disponíveis.
 
 O CandiFill não tem um servidor próprio de IA. Se você configurar uma chave e acionar um recurso de IA, o texto necessário é enviado do navegador diretamente ao provedor selecionado:
 

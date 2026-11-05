@@ -25,7 +25,7 @@ When you create a profile tailored to a job description, CandiFill sends the job
 
 When you ask CandiFill to find available models, it sends your API key to the selected provider to retrieve the models accessible to that key; no profile or job application text is included in this lookup. If you choose **Test compatibility**, CandiFill sends a short test prompt to the selected model. The provider may count this request toward your usage or charges.
 
-The provider also receives the API key needed to authenticate the request. On Firefox 140 and later, Firefox asks for data-sharing consent before the first request for each relevant data category. If you decline, that request is not sent and local features remain available. CandiFill does not send this text to providers until you use an AI feature. Further handling is governed by the selected provider's terms and privacy policy.
+The provider also receives the API key needed to authenticate the request. Before each AI action, CandiFill identifies the text and API key that will be sent and names the provider; the request is sent only after you click that action. On Firefox desktop 140+ and Firefox Android 142+, Firefox also asks for data-sharing consent before the first request for each relevant data category. If you decline, that request is not sent and local features remain available. Further handling is governed by the selected provider's terms and privacy policy.
 
 ## Data from job application pages
 

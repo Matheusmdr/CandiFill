@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
   "default_locale": "en",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "__MSG_extensionDescription__",
   "browser_specific_settings": {
     "gecko": {
@@ -12,6 +12,9 @@
         "required": ["none"],
         "optional": ["authenticationInfo", "personallyIdentifyingInfo", "websiteContent"]
       }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
     }
   },
   "permissions": [

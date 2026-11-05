@@ -361,7 +361,9 @@ export const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
                     <span>{t('Descrição da vaga')}</span>
                     <textarea value={jobDescription} onChange={(event) => { setJobDescription(event.target.value); setDraftReady(false); }} rows={5} placeholder={t('Cole aqui a descrição da vaga...')} className="profile-modal-input resize-y" />
                   </label>
-                  <p className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 text-[11px] leading-relaxed text-amber-100/80">{t('A descrição da vaga, o cargo desejado, o título, os resumos e as experiências do perfil ativo serão enviados ao provedor de IA configurado, junto com a chave para autenticar a solicitação. Contato, formação, currículo anexado e respostas salvas não serão enviados.')}</p>
+                  <p className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 text-[11px] leading-relaxed text-amber-100/80">{t('Ao clicar em "Gerar rascunho com IA", você autoriza o envio da descrição da vaga, cargo desejado, título profissional, resumos e experiências do perfil ativo, junto com sua chave de API, diretamente a {provider}. Contato, formação, currículo anexado e respostas salvas não são enviados. O provedor pode cobrar pelo uso.', {
+                    provider: activeEntry?.profile.aiConfig.provider === 'gemini' ? 'Google Gemini' : 'OpenAI',
+                  })}</p>
                   <div className="flex flex-wrap gap-2">
                     <button type="button" onClick={handleGenerateDraft} disabled={isLoading} className="profile-modal-primary">
                       {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}

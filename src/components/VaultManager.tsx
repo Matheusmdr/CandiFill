@@ -1546,6 +1546,9 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                     </div>
 
                     <div className="space-y-2">
+                      <p className="text-[10px] leading-relaxed text-zinc-500">
+                        {t('A lista mostra modelos de texto adequados para aprimorar textos, analisar currículos e adaptar perfis. Ao clicar em Buscar modelos, sua chave é enviada ao provedor escolhido para consultar os modelos disponíveis. Testar compatibilidade envia uma solicitação curta ao modelo selecionado. Essas ações podem gerar cobrança.')}
+                      </p>
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
@@ -1566,9 +1569,6 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                           {isTestingAiModel ? t('Testando...') : t('Testar compatibilidade')}
                         </button>
                       </div>
-                      <p className="text-[10px] leading-relaxed text-zinc-500">
-                        {t('A lista mostra modelos de texto adequados para aprimorar textos, analisar currículos e adaptar perfis. Os recomendados tendem a ser mais rápidos e econômicos. O teste envia uma solicitação curta e pode gerar cobrança do provedor.')}
-                      </p>
                       {!formData.aiConfig.apiKey.trim() && (
                         <p className="text-[10px] text-amber-300/80">{t('Informe a chave de API antes de buscar modelos.')}</p>
                       )}

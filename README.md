@@ -18,9 +18,14 @@ Read the [Privacy Policy in English](docs/PRIVACY.md) or [Portuguese](docs/PRIVA
 
 ## Install a prebuilt package
 
-Download the latest [CandiFill Firefox package](https://github.com/Matheusmdr/CandiFill/releases/latest/download/candifill-firefox.zip) and extract it. In Firefox, open `about:debugging#/runtime/this-firefox`, select **Load Temporary Add-on**, and choose `manifest.json` from the extracted folder.
+Download and extract the package for your browser from [GitHub Releases](https://github.com/Matheusmdr/CandiFill/releases/latest):
 
-Firefox removes temporary add-ons when it closes. A permanent installation will be available after the Firefox Add-ons listing is approved.
+- **Firefox:** open `about:debugging#/runtime/this-firefox`, select **Load Temporary Add-on**, and choose `manifest.json` from the extracted folder. Firefox removes temporary add-ons when it closes. Permanent installation will be available after the Firefox Add-ons listing is approved.
+- **Chrome and other Chromium-based browsers:** open the browser's extensions page, enable **Developer mode**, select **Load unpacked**, and choose the extracted package folder. Use the Chromium package for Chrome, Edge, Opera, Brave, and Vivaldi.
+
+The GitHub release workflow builds separate Firefox and Chromium packages. The Chromium package has its own Manifest V3 service-worker manifest; the Firefox data-consent metadata is only included in the Firefox package.
+
+Releases published before this workflow change only contain the Firefox package. This update increments the extension version; tag the release with the same version (for example, `v1.0.3`) to generate and attach both packages.
 
 ## Install from source
 
@@ -64,13 +69,16 @@ npm run build
 
 ## Browser support
 
-The first release targets Firefox 140 and later. Compatibility with individual job application sites and other Firefox-based browsers has not been fully verified yet. CandiFill does not claim universal support for every application form.
+- **Firefox desktop 140 and later.** Firefox Android requires 142 or later.
+- **Chromium-based browsers 102 and later**, including Chrome, Edge, Opera, Brave, and Vivaldi.
+
+The browser APIs and release packages are prepared for these versions, but branded browsers and individual job application sites have not all been manually verified. CandiFill does not claim universal support for every application form. See [browser compatibility and publishing notes](docs/BROWSER-COMPATIBILITY.md) for known store-specific limitations.
 
 ## Privacy and permissions
 
 - Your profiles and resumes are stored in the extension's local browser storage. Contact details, education, AI settings, and theme are shared across profiles; role-specific information stays with each profile.
 - Answers waiting for your review are kept in the extension session, associated with the tab and site, for up to 15 minutes. They are not added to your profile unless you confirm.
-- Firefox asks for data-sharing consent before the first AI request for each data category. Declining leaves local autofill and other local features available.
+- Firefox asks for data-sharing consent before the first AI request for each data category. Before each AI action in other browsers, CandiFill identifies the text and API key that will be sent; nothing is sent until you click the action button. Declining Firefox's request leaves local autofill and other local features available.
 - AI features send the text needed for the requested action directly to your selected provider (Gemini or OpenAI). Tailoring a profile sends the job description and the active profile's professional summaries and work history; it does not send contact details, the attached resume, or saved answers. Model discovery sends your API key to the provider; checking a selected model sends a short test prompt and may incur usage charges. CandiFill does not run its own AI server.
 - CandiFill injects its content script into the active page only after you invoke the extension or keyboard shortcut. Passive answer capture is limited to pages recognized as job applications. See the [Privacy Policy](docs/PRIVACIDADE.md) for details and limitations.
 

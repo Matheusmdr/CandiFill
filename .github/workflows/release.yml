@@ -1,4 +1,4 @@
-name: Build and publish Firefox release
+name: Build and publish browser release
 
 on:
   push:
@@ -38,7 +38,7 @@ jobs:
       - name: Build extension
         run: npm run build
 
-      - name: Package extension
+      - name: Package Firefox and Chromium extensions
         env:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
@@ -51,8 +51,28 @@ jobs:
           fi
           (cd dist && zip -r ../candifill-firefox.zip .)
 
-      - name: Create GitHub release
+          # Chromium uses a service worker and ignores Firefox-specific settings.
+          mkdir dist-chromium
+          cp -a dist/. dist-chromium/
+          node <<'NODE'
+          const fs = require('node:fs');
+          const manifestPath = 'dist-chromium/manifest.json';
+          const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+          delete manifest.browser_specific_settings;
+          delete manifest.background.scripts;
+          manifest.minimum_chrome_version = '102';
+          fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+          NODE
+          (cd dist-chromium && zip -r ../candifill-chromium.zip .)
+
+      - name: Publish browser packages to GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
-        run: gh release create "$RELEASE_TAG" candifill-firefox.zip --title "CandiFill ${RELEASE_TAG#v}" --generate-notes --verify-tag
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" candifill-firefox.zip candifill-chromium.zip --clobber
+          else
+            gh release create "$RELEASE_TAG" candifill-firefox.zip candifill-chromium.zip --title "CandiFill ${RELEASE_TAG#v}" --generate-notes --verify-tag
+          fi

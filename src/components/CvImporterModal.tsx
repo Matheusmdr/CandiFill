@@ -505,6 +505,14 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
                     </div>
                   )}
 
+                  {hasApiKey && rawText.trim() && (
+                    <p className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-[11px] leading-relaxed text-amber-100/80">
+                      {t('Ao clicar em "Analisar com IA", você autoriza o envio do texto extraído ou colado do currículo e da sua chave de API diretamente a {provider}. O arquivo PDF original fica no dispositivo; o provedor pode cobrar pelo uso.', {
+                        provider: aiConfig.provider === 'gemini' ? 'Google Gemini' : 'OpenAI',
+                      })}
+                    </p>
+                  )}
+
                   {errorMessage && (
                     <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-300 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
