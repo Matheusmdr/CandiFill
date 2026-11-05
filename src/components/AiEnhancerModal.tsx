@@ -67,7 +67,7 @@ export const AiEnhancerModal: React.FC<AiEnhancerModalProps> = ({
     setErrorMessage(null);
 
     const preset = TONE_PRESETS.find((p) => p.id === selectedPreset);
-    const customPrompt = preset?.prompt || TONE_PRESETS[0].prompt;
+    const customPrompt = t(preset?.prompt || TONE_PRESETS[0].prompt);
 
     try {
       const result = await enhanceTextWithAi({

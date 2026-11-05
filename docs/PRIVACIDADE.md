@@ -8,6 +8,8 @@ Esta política descreve o tratamento de dados na versão inicial do CandiFill. E
 
 O CandiFill guarda no armazenamento local da extensão os dados que você insere ou importa para o cofre, como informações de contato, experiência profissional, formação, respostas reutilizáveis, currículo e a chave de API que você configurou. Esse perfil não é enviado a um servidor do CandiFill.
 
+A preferência de idioma da interface também é salva localmente na extensão.
+
 Quando um campo compatível estava vazio e você digita uma resposta elegível, a extensão pode criar uma sugestão para revisão. Para manter a sugestão disponível depois de uma navegação do formulário, ela fica temporariamente na sessão da extensão, associada à aba e ao domínio, por até 15 minutos. A sugestão só é gravada no perfil depois que você seleciona **Salvar**. Descartar a revisão remove a sugestão. O filtro automático pode não reconhecer todas as informações sensíveis; revise cada pergunta e resposta antes de salvar.
 
 O backup JSON é gerado localmente para você baixar. Ele pode conter o perfil, as respostas salvas e o currículo anexado, mas omite a chave de API.

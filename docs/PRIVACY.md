@@ -8,6 +8,8 @@ This policy describes how the initial release of CandiFill handles data. It shou
 
 CandiFill stores the information you enter or import into your vault in the extension's local browser storage. This may include contact details, work experience, education, reusable answers, your resume, and the API key you configure. CandiFill does not send this profile to its own server.
 
+Your interface language preference is also stored locally in the extension.
+
 When a compatible form field was empty and you enter an eligible answer, the extension may create a suggestion for you to review. To keep it available after the form navigates, the suggestion is stored temporarily in the extension session, associated with the tab and domain, for up to 15 minutes. It is only written to your profile after you select **Save**. Dismissing the review removes the suggestion. Automatic filters may miss sensitive information, so review each question and answer before saving.
 
 The JSON backup is created locally for you to download. It may contain your profile, saved answers, and attached resume, but it excludes your API key.
