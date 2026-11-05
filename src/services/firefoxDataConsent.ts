@@ -4,6 +4,11 @@ interface FirefoxPermissionsApi {
   request: (permissions: { data_collection: FirefoxDataCategory[] }) => Promise<boolean>;
 }
 
+interface FirefoxExtensionApi {
+  permissions?: Partial<FirefoxPermissionsApi>;
+  runtime?: { getBrowserInfo?: () => Promise<unknown> };
+}
+
 const consentErrorMessages: Record<string, string> = {
   FIREFOX_DATA_CONSENT_DECLINED: 'O consentimento para enviar dados ao provedor foi recusado. Os recursos locais continuam disponíveis.',
   FIREFOX_DATA_CONSENT_UNAVAILABLE: 'O Firefox não conseguiu abrir o pedido de consentimento. Tente novamente.',
@@ -19,13 +24,12 @@ export function getFirefoxDataConsentErrorMessage(
 
 /** Requests Firefox's built-in disclosure before sending data to an AI provider. */
 export async function requestFirefoxDataConsent(categories: FirefoxDataCategory[]): Promise<void> {
-  const browserApi = (globalThis as typeof globalThis & {
-    browser?: { permissions?: Partial<FirefoxPermissionsApi> };
-  }).browser;
+  const browserApi = (globalThis as typeof globalThis & { browser?: FirefoxExtensionApi }).browser;
   const request = browserApi?.permissions?.request;
 
-  // Mozilla's built-in consent API is only available in Firefox 140+.
-  if (typeof request !== 'function') return;
+  // Chromium added the `browser` namespace too. Detect Firefox specifically so
+  // its Gecko-only data_collection permission is never sent to other browsers.
+  if (typeof browserApi?.runtime?.getBrowserInfo !== 'function' || typeof request !== 'function') return;
 
   let granted = false;
   try {
