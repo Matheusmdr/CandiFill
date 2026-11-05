@@ -4,6 +4,7 @@ release/
 *.xpi
 *.crx
 *.zip
+!releases/firefox/*.zip
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

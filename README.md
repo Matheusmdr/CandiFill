@@ -2,7 +2,7 @@
 
 CandiFill is a Firefox extension that helps you fill out job applications using your saved professional profile and reusable answers. Your profile stays in the browser, and you review new answers before saving them.
 
-> **Project status:** preparing for its first public release. The Firefox Add-ons installation link will be added after Mozilla approves the listing. Until then, use the source installation steps below.
+> **Project status:** preparing for its first public release. The Firefox Add-ons installation link will be added after Mozilla approves the listing. Until then, download the prebuilt package or follow the source installation steps below.
 
 ## Features
 
@@ -14,6 +14,12 @@ CandiFill is a Firefox extension that helps you fill out job applications using 
 - Export and restore your profile as JSON. API keys are excluded from backups.
 
 Read the [Privacy Policy in English](docs/PRIVACY.md) or [Portuguese](docs/PRIVACIDADE.md) before using the extension.
+
+## Install a prebuilt package
+
+Download the [CandiFill Firefox package](releases/firefox/candifill-firefox-1.0.0.zip) and extract it. In Firefox, open `about:debugging#/runtime/this-firefox`, select **Load Temporary Add-on**, and choose `manifest.json` from the extracted folder.
+
+Firefox removes temporary add-ons when it closes. A permanent installation will be available after the Firefox Add-ons listing is approved.
 
 ## Install from source
 
