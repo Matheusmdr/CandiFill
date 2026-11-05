@@ -18,14 +18,14 @@ Read the [Privacy Policy in English](docs/PRIVACY.md) or [Portuguese](docs/PRIVA
 
 ## Install a prebuilt package
 
-Download and extract the package for your browser from [GitHub Releases](https://github.com/Matheusmdr/CandiFill/releases/latest):
+Download and extract the package for your browser:
 
-- **Firefox:** open `about:debugging#/runtime/this-firefox`, select **Load Temporary Add-on**, and choose `manifest.json` from the extracted folder. Firefox removes temporary add-ons when it closes. Permanent installation will be available after the Firefox Add-ons listing is approved.
-- **Chrome and other Chromium-based browsers:** open the browser's extensions page, enable **Developer mode**, select **Load unpacked**, and choose the extracted package folder. Use the Chromium package for Chrome, Edge, Opera, Brave, and Vivaldi.
+- [Firefox package](https://github.com/Matheusmdr/CandiFill/releases/latest/download/candifill-firefox.zip): open `about:debugging#/runtime/this-firefox`, select **Load Temporary Add-on**, and choose `manifest.json` from the extracted folder. Firefox removes temporary add-ons when it closes. Permanent installation will be available after the Firefox Add-ons listing is approved.
+- [Chromium package](https://github.com/Matheusmdr/CandiFill/releases/latest/download/candifill-chromium.zip): open the browser's extensions page, enable **Developer mode**, select **Load unpacked**, and choose the extracted package folder. Use it for Chrome, Edge, Opera, Brave, and Vivaldi.
 
 The GitHub release workflow builds separate Firefox and Chromium packages. The Chromium package has its own Manifest V3 service-worker manifest; the Firefox data-consent metadata is only included in the Firefox package.
 
-Releases published before this workflow change only contain the Firefox package. This update increments the extension version; tag the release with the same version (for example, `v1.0.3`) to generate and attach both packages.
+Releases before `v1.0.3` contain only the Firefox package. For future releases, update the version in `public/manifest.json`, `package.json`, and `package-lock.json`, then push a matching `vX.Y.Z` tag. GitHub Actions will run tests, build both browser packages, and attach them to the release.
 
 ## Install from source
 
