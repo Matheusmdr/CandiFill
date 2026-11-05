@@ -5,6 +5,40 @@ import { CapturedProfileField, CapturedProfileFieldKey, getAnswerFieldQuestion, 
 import { getSavedAnswerKey, mergeSavedAnswers } from './services/savedAnswers';
 import { normalizePendingAnswerCandidates } from './services/pendingAnswerReview';
 import { isLikelyJobApplicationPage } from './services/pageDetection';
+import { getBrowserLocale, loadPreferredLocale, LOCALE_STORAGE_KEY, Locale, translate, translatePlural } from './services/localization';
+
+let contentLocale: Locale = getBrowserLocale();
+
+function t(message: string, values?: Record<string, string | number>): string {
+  return translate(contentLocale, message, values);
+}
+
+function tp(singular: string, plural: string, count: number): string {
+  return translatePlural(contentLocale, singular, plural, count);
+}
+
+function updateContentLocale(locale: Locale): void {
+  contentLocale = locale;
+  const host = document.getElementById('jobfill-trigger-btn');
+  const actionButton = host?.shadowRoot?.querySelector<HTMLButtonElement>('[data-candifill-action]');
+  const label = actionButton?.querySelector('span:last-child');
+  if (actionButton) actionButton.title = t('Preencher formulário automaticamente com CandiFill (Ctrl+Shift+.)');
+  if (label && !actionButton?.disabled) label.textContent = t('Preencher com CandiFill');
+  if (pendingAnswerCandidates.size > 0) renderAnswerReview();
+}
+
+void loadPreferredLocale().then((locale) => {
+  if (locale) updateContentLocale(locale);
+});
+
+if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    const locale = changes[LOCALE_STORAGE_KEY]?.newValue;
+    if (areaName === 'local' && (locale === 'en' || locale === 'pt-BR')) {
+      updateContentLocale(locale);
+    }
+  });
+}
 
 interface PendingCapturedAnswer extends SavedAnswer {
   profileField: CapturedProfileField | null;
@@ -106,12 +140,12 @@ function renderAnswerReview(): void {
   panel.style.cssText = 'width:min(360px,calc(100vw - 32px));max-height:min(420px,70vh);overflow:auto;padding:12px;border:1px solid rgba(16,185,129,.4);border-radius:16px;background:#09090b;color:#f4f4f5;box-shadow:0 16px 40px rgba(0,0,0,.55);font:12px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;';
 
   const heading = document.createElement('div');
-  heading.textContent = 'Respostas novas para revisar';
+  heading.textContent = t('Respostas novas para revisar');
   heading.style.cssText = 'font-size:13px;font-weight:700;margin-bottom:4px;';
   panel.appendChild(heading);
 
   const explanation = document.createElement('p');
-  explanation.textContent = 'Escolha quais respostas quer guardar. Se a página navegar, a revisão fica nesta sessão por até 15 min. Nada vai ao perfil sem sua confirmação.';
+  explanation.textContent = t('Escolha quais respostas quer guardar. Se a página navegar, a revisão fica nesta sessão por até 15 min. Nada vai ao perfil sem sua confirmação.');
   explanation.style.cssText = 'margin:0 0 10px;color:#a1a1aa;';
   panel.appendChild(explanation);
 
@@ -140,17 +174,17 @@ function renderAnswerReview(): void {
     site.style.cssText = 'display:block;margin-top:3px;color:#71717a;';
     text.append(question, answer, site);
     const destination = document.createElement('select');
-    destination.setAttribute('aria-label', `Onde salvar a resposta: ${candidate.question}`);
+    destination.setAttribute('aria-label', t('Onde salvar a resposta: {question}', { question: candidate.question }));
     destination.style.cssText = 'display:block;max-width:100%;margin-top:6px;padding:4px 6px;border:1px solid #3f3f46;border-radius:7px;background:#18181b;color:#d4d4d8;font:11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;';
     if (candidate.profileField) {
       const profileOption = document.createElement('option');
       profileOption.value = candidate.profileField.key;
-      profileOption.textContent = `Salvar no perfil: ${candidate.profileField.label}`;
+      profileOption.textContent = t('Salvar no perfil: {label}', { label: t(candidate.profileField.label) });
       destination.appendChild(profileOption);
     }
     const answerOption = document.createElement('option');
     answerOption.value = 'saved-answer';
-    answerOption.textContent = 'Salvar como resposta reutilizável';
+    answerOption.textContent = t('Salvar como resposta reutilizável');
     destination.appendChild(answerOption);
     destination.value = candidate.destination;
     destination.onchange = () => {
@@ -166,7 +200,7 @@ function renderAnswerReview(): void {
     reuseCheckbox.onchange = () => { candidate.reuseOnAnySite = reuseCheckbox.checked; };
     reuseCheckbox.style.cssText = 'accent-color:#10b981;';
     const reuseText = document.createElement('span');
-    reuseText.textContent = 'Permitir reutilizar em outros sites';
+    reuseText.textContent = t('Permitir reutilizar em outros sites');
     reuseLabel.append(reuseCheckbox, reuseText);
     text.appendChild(reuseLabel);
     row.append(checkbox, text);
@@ -177,7 +211,7 @@ function renderAnswerReview(): void {
   actions.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;margin-top:12px;';
   const dismiss = document.createElement('button');
   dismiss.type = 'button';
-  dismiss.textContent = 'Descartar';
+  dismiss.textContent = t('Descartar');
   dismiss.style.cssText = 'padding:7px 10px;border:1px solid #3f3f46;border-radius:9px;background:#18181b;color:#d4d4d8;cursor:pointer;';
   dismiss.onclick = () => {
     pendingAnswerCandidates.clear();
@@ -188,7 +222,7 @@ function renderAnswerReview(): void {
 
   const save = document.createElement('button');
   save.type = 'button';
-  save.textContent = 'Salvar selecionadas';
+  save.textContent = t('Salvar selecionadas');
   save.disabled = true;
   save.style.cssText = 'padding:7px 10px;border:0;border-radius:9px;background:#059669;color:#03120c;font-weight:700;cursor:pointer;opacity:.5;';
   const updateSaveState = () => {
@@ -206,7 +240,7 @@ function renderAnswerReview(): void {
     if (selected.length === 0) return;
 
     save.disabled = true;
-    save.textContent = 'Salvando…';
+    save.textContent = t('Salvando…');
     try {
       const profile = await loadCandidateProfile({ allowLocalStorageFallback: false });
       const personalUpdates: Partial<PersonalInfo> = {};
@@ -231,11 +265,11 @@ function renderAnswerReview(): void {
       if (pendingAnswerCandidates.size > 0) stageAnswerReviewSoon();
       else clearStagedAnswerReview();
       renderAnswerReview();
-      showFloatingToast(`${selected.length} resposta(s) salva(s) no CandiFill.`, true);
+      showFloatingToast(tp('{count} resposta salva no CandiFill.', '{count} respostas salvas no CandiFill.', selected.length), true);
     } catch (error) {
-      showFloatingToast(`Não foi possível salvar as respostas: ${String(error)}`, false);
+      showFloatingToast(`${t('Não foi possível salvar as respostas: ')}${String(error)}`, false);
       save.disabled = false;
-      save.textContent = 'Salvar selecionadas';
+      save.textContent = t('Salvar selecionadas');
       updateSaveState();
     }
   };
@@ -247,7 +281,7 @@ function renderAnswerReview(): void {
   } else {
     const reviewButton = document.createElement('button');
     reviewButton.type = 'button';
-    reviewButton.textContent = `Revisar ${pendingAnswerCandidates.size} resposta(s) nova(s)`;
+    reviewButton.textContent = tp('Revisar {count} resposta nova', 'Revisar {count} respostas novas', pendingAnswerCandidates.size);
     reviewButton.style.cssText = 'padding:10px 14px;border:1px solid rgba(16,185,129,.5);border-radius:999px;background:#09090b;color:#d1fae5;font:600 12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 10px 25px rgba(0,0,0,.45);cursor:pointer;';
     reviewButton.onclick = () => {
       answerReviewOpen = true;
@@ -423,7 +457,7 @@ async function triggerAutofill(customProfile?: CandidateProfile) {
 
     if (!hasProfileData) {
       armAnswerCapture();
-      showFloatingToast('Seu perfil ainda está vazio. Preencha o formulário e revise respostas novas para salvá-las.', false);
+      showFloatingToast(t('Seu perfil ainda está vazio. Preencha o formulário e revise respostas novas para salvá-las.'), false);
       return { totalFilled: 0, fieldsFilled: [], fieldsSkipped: [] };
     }
 
@@ -437,18 +471,22 @@ async function triggerAutofill(customProfile?: CandidateProfile) {
 
     if (result.totalFilled > 0) {
       const preservedMessage = result.fieldsSkipped.length
-        ? ` ${result.fieldsSkipped.length} campo(s) já preenchido(s) foram preservados.`
+        ? tp(' {count} campo já preenchido foi preservado.', ' {count} campos já preenchidos foram preservados.', result.fieldsSkipped.length)
         : '';
-      showFloatingToast(`CandiFill preencheu ${result.totalFilled} campo(s).${preservedMessage}`, true);
+      showFloatingToast(`${tp('CandiFill preencheu {count} campo.', 'CandiFill preencheu {count} campos.', result.totalFilled)}${preservedMessage}`, true);
     } else if (result.fieldsSkipped.length > 0) {
-      showFloatingToast(`Nenhum campo foi alterado; ${result.fieldsSkipped.length} resposta(s) existente(s) foram preservadas.`, false);
+      showFloatingToast(tp(
+        'Nenhum campo foi alterado; {count} resposta existente foi preservada.',
+        'Nenhum campo foi alterado; {count} respostas existentes foram preservadas.',
+        result.fieldsSkipped.length
+      ), false);
     } else {
-      showFloatingToast('Nenhum campo compatível foi preenchido. Você pode completar o formulário; respostas novas poderão ser revisadas.', false);
+      showFloatingToast(t('Nenhum campo compatível foi preenchido. Você pode completar o formulário; respostas novas poderão ser revisadas.'), false);
     }
 
     return result;
   } catch {
-    showFloatingToast('Não foi possível acessar o perfil da extensão. Abra o cofre e tente novamente.', false);
+    showFloatingToast(t('Não foi possível acessar o perfil da extensão. Abra o cofre e tente novamente.'), false);
     return { totalFilled: 0, fieldsFilled: [], fieldsSkipped: [] };
   }
 }
@@ -505,7 +543,8 @@ function injectFloatingButton() {
 
   const actionBtn = document.createElement('button');
   actionBtn.type = 'button';
-  actionBtn.title = 'Preencher formulário automaticamente com CandiFill (Ctrl+Shift+.)';
+  actionBtn.dataset.candifillAction = 'true';
+  actionBtn.title = t('Preencher formulário automaticamente com CandiFill (Ctrl+Shift+.)');
   actionBtn.style.cssText = `
     background: none;
     border: none;
@@ -520,7 +559,7 @@ function injectFloatingButton() {
   `;
   actionBtn.innerHTML = `
     <span style="color: #34d399; font-size: 14px;">⚡</span>
-    <span>Preencher com CandiFill</span>
+    <span>${t('Preencher com CandiFill')}</span>
   `;
   actionBtn.addEventListener('click', async (event) => {
     event.preventDefault();
@@ -528,11 +567,10 @@ function injectFloatingButton() {
     if (actionBtn.disabled) return;
 
     const label = actionBtn.querySelector('span:last-child');
-    const originalLabel = label?.textContent || 'Preencher com CandiFill';
     actionBtn.disabled = true;
     actionBtn.setAttribute('aria-busy', 'true');
     actionBtn.style.cursor = 'wait';
-    if (label) label.textContent = 'Preenchendo…';
+    if (label) label.textContent = t('Preenchendo…');
 
     try {
       await triggerAutofill();
@@ -540,14 +578,14 @@ function injectFloatingButton() {
       actionBtn.disabled = false;
       actionBtn.removeAttribute('aria-busy');
       actionBtn.style.cursor = 'pointer';
-      if (label) label.textContent = originalLabel;
+      if (label) label.textContent = t('Preencher com CandiFill');
     }
   });
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
-  closeBtn.setAttribute('aria-label', 'Ocultar botão nesta página');
-  closeBtn.title = 'Ocultar botão nesta página';
+  closeBtn.setAttribute('aria-label', t('Ocultar botão nesta página'));
+  closeBtn.title = t('Ocultar botão nesta página');
   closeBtn.style.cssText = `
     background: none;
     border: none;

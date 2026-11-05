@@ -30,6 +30,8 @@ import { createCandidateProfileBackup } from '../services/storage';
 import { CustomFieldsEditor } from './CustomFieldsEditor';
 import { AiEnhancerModal } from './AiEnhancerModal';
 import { CvImporterModal } from './CvImporterModal';
+import { useLocale } from '../contexts/LocaleContext';
+import { Locale } from '../services/localization';
 
 interface VaultManagerProps {
   profile: CandidateProfile;
@@ -46,6 +48,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
   onOpenSpotlight,
   onAutofillPage,
 }) => {
+  const { locale, setLocale, t } = useLocale();
   const [formData, setFormData] = useState<CandidateProfile>(profile);
   const [activeTab, setActiveTab] = useState<TabType>('personal');
   const [isSaving, setIsSaving] = useState(false);
@@ -58,7 +61,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
 
   const processResumeFileObject = (file: File) => {
     if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
-      alert('Por favor, selecione um arquivo em formato PDF.');
+      alert(t('Por favor, selecione um arquivo em formato PDF.'));
       return;
     }
     const reader = new FileReader();
@@ -346,12 +349,12 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
             <div className="flex items-center gap-1.5">
               <span className="text-sm font-semibold text-zinc-100 truncate pointer-events-none">CandiFill</span>
               <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/50 px-1.5 py-0.5 rounded-full pointer-events-none">
-                Vault
+                {t("Vault")}
               </span>
             </div>
             <p className="app-header-status text-[10px] text-zinc-400 flex items-center gap-1.5 leading-tight pointer-events-none">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
-              <span className="text-emerald-400/90 font-mono">Sincronizado</span>
+              <span className="text-emerald-400/90 font-mono">{t("Sincronizado")}</span>
             </p>
           </div>
         </div>
@@ -360,11 +363,11 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
           {onAutofillPage && (
             <button
               onClick={onAutofillPage}
-              title="Preencher formulário na aba ativa (Ctrl+Shift+.)"
+              title={t("Preencher formulário na aba ativa (Ctrl+Shift+.)")}
               className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-950/40 transition-colors"
             >
               <Zap className="w-3.5 h-3.5 fill-current" />
-              <span>Preencher</span>
+              <span>{t("Preencher")}</span>
               <kbd className="hidden lg:inline-block font-mono text-[9px] text-emerald-950 bg-emerald-400/80 px-1 rounded">
                 Ctrl+Shift+.
               </kbd>
@@ -374,43 +377,43 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
           {onOpenSpotlight && (
             <button
               onClick={onOpenSpotlight}
-              title="Abrir Spotlight HUD (Alt+Shift+V)"
+              title={t("Abrir Spotlight HUD (Alt+Shift+V)")}
               className="popup-hide-narrow px-2.5 py-1.5 rounded-xl bg-zinc-800/90 hover:bg-zinc-700/90 border border-zinc-700 text-xs font-medium text-zinc-300 flex items-center gap-1.5 transition-colors"
             >
               <Keyboard className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">Spotlight</span>
+              <span className="hidden sm:inline">{t("Spotlight")}</span>
             </button>
           )}
 
           <button
             onClick={handleOpenCvImporter}
-            title="Importar dados de currículo em PDF com IA ou restaurar backup"
+            title={t("Importar dados de currículo em PDF com IA ou restaurar backup")}
             className="popup-hide-narrow px-2.5 py-1.5 rounded-xl bg-zinc-800/90 hover:bg-zinc-700/90 border border-zinc-700 text-xs font-medium text-zinc-300 flex items-center gap-1.5 transition-colors"
           >
             <FileUp className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="hidden md:inline">Importar CV</span>
+            <span className="hidden md:inline">{t("Importar CV")}</span>
           </button>
 
           <button
             onClick={handleSave}
             disabled={isSaving}
-            title={saveError || 'Salvar alterações (Ctrl+S)'}
+            title={saveError ? t(saveError) : `${t('Salvar alterações no cofre:')} Ctrl+S`}
             className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-medium text-zinc-200 flex items-center gap-1.5 transition-colors"
           >
             {saveSuccess ? (
               <>
                 <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-400 font-medium">Salvo!</span>
+                <span className="text-emerald-400 font-medium">{t("Salvo!")}</span>
               </>
             ) : saveError ? (
               <>
                 <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
-                <span className="hidden sm:inline text-rose-300">Falha</span>
+                <span className="hidden sm:inline text-rose-300">{t("Falha")}</span>
               </>
             ) : (
               <>
                 <Save className="w-3.5 h-3.5 text-zinc-400" />
-                <span className="hidden sm:inline">Salvar</span>
+                <span className="hidden sm:inline">{t("Salvar")}</span>
               </>
             )}
           </button>
@@ -426,7 +429,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                   window.open('index.html?view=tab', '_blank');
                 }
               }}
-              title="Abrir Cofre em Aba Cheia"
+              title={t("Abrir Cofre em Aba Cheia")}
               className="p-1.5 rounded-xl bg-zinc-800/60 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors ml-0.5"
             >
               <ExternalLink className="w-3.5 h-3.5" />
@@ -441,50 +444,50 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
         <div className="app-sidebar w-14 sm:w-44 lg:w-56 xl:w-60 sidebar-glass p-2 sm:p-3 space-y-1.5 shrink-0 select-none transition-all duration-150">
           <button
             onClick={() => setActiveTab('personal')}
-            title="Dados & Contato"
+            title={t("Dados & Contato")}
             className={`w-full px-2 sm:px-3 py-2.5 rounded-xl text-left text-xs font-medium flex items-center justify-center sm:justify-start gap-2.5 border transition-colors duration-150 ${activeTab === 'personal'
                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                 : 'border-transparent text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
               }`}
           >
             <User className="w-4 h-4 shrink-0" />
-            <span className="hidden sm:inline truncate">Dados & Contato</span>
+            <span className="hidden sm:inline truncate">{t("Dados & Contato")}</span>
           </button>
 
           <button
             onClick={() => setActiveTab('summaries')}
-            title="Resumos & Pitch (IA)"
+            title={t("Resumos & Pitch (IA)")}
             className={`w-full px-2 sm:px-3 py-2.5 rounded-xl text-left text-xs font-medium flex items-center justify-center sm:justify-start gap-2.5 border transition-colors duration-150 ${activeTab === 'summaries'
                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                 : 'border-transparent text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
               }`}
           >
             <FileText className="w-4 h-4 shrink-0" />
-            <span className="hidden sm:inline truncate">Resumos & Pitch (IA)</span>
+            <span className="hidden sm:inline truncate">{t("Resumos & Pitch (IA)")}</span>
           </button>
 
           <button
             onClick={() => setActiveTab('experience')}
-            title="Carreira & Formação"
+            title={t("Carreira & Formação")}
             className={`w-full px-2 sm:px-3 py-2.5 rounded-xl text-left text-xs font-medium flex items-center justify-center sm:justify-start gap-2.5 border transition-colors duration-150 ${activeTab === 'experience'
                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                 : 'border-transparent text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
               }`}
           >
             <Briefcase className="w-4 h-4 shrink-0" />
-            <span className="hidden sm:inline truncate">Carreira & Formação</span>
+            <span className="hidden sm:inline truncate">{t("Carreira & Formação")}</span>
           </button>
 
           <button
             onClick={() => setActiveTab('custom')}
-            title="Campos Customizados"
+            title={t("Campos Customizados")}
             className={`w-full px-2 sm:px-3 py-2.5 rounded-xl text-left text-xs font-medium flex items-center justify-center sm:justify-start gap-2.5 border transition-colors duration-150 ${activeTab === 'custom'
                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                 : 'border-transparent text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
               }`}
           >
             <Tag className="w-4 h-4 shrink-0" />
-            <span className="hidden sm:inline truncate">Campos Custom</span>
+            <span className="hidden sm:inline truncate">{t("Campos Custom")}</span>
             {formData.customFields.length + formData.savedAnswers.length > 0 && (
               <span className="hidden sm:inline-block ml-auto text-[10px] bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded-full font-mono">
                 {formData.customFields.length + formData.savedAnswers.length}
@@ -496,14 +499,14 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
 
           <button
             onClick={() => setActiveTab('settings')}
-            title="Configurações & IA"
+            title={t("Configurações & IA")}
             className={`w-full px-2 sm:px-3 py-2.5 rounded-xl text-left text-xs font-medium flex items-center justify-center sm:justify-start gap-2.5 border transition-colors duration-150 ${activeTab === 'settings'
                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                 : 'border-transparent text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
               }`}
           >
             <Settings className="w-4 h-4 shrink-0" />
-            <span className="hidden sm:inline truncate">Configurações & IA</span>
+            <span className="hidden sm:inline truncate">{t("Configurações & IA")}</span>
           </button>
         </div>
 
@@ -513,24 +516,24 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
           {activeTab === 'personal' && (
             <div className="w-full space-y-6 animate-fade-in">
               <div>
-                <h2 className="text-base font-semibold text-zinc-100">Informações Pessoais & Contato</h2>
+                <h2 className="text-base font-semibold text-zinc-100">{t("Informações Pessoais & Contato")}</h2>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Dados essenciais utilizados na maioria das triagens de vagas e formulários de candidatura.
+                  {t("Dados essenciais utilizados na maioria das triagens de vagas e formulários de candidatura.")}
                 </p>
               </div>
 
               {formData.unconfirmedDefaults.length > 0 && (
                 <section role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-3">
                   <div>
-                    <h3 className="text-xs font-semibold text-amber-200">Revise respostas padrão antigas</h3>
-                    <p className="mt-1 text-[11px] text-amber-100/70">Elas não serão usadas no preenchimento até você confirmar cada valor.</p>
+                    <h3 className="text-xs font-semibold text-amber-200">{t("Revise respostas padrão antigas")}</h3>
+                    <p className="mt-1 text-[11px] text-amber-100/70">{t("Elas não serão usadas no preenchimento até você confirmar cada valor.")}</p>
                   </div>
                   {formData.unconfirmedDefaults.map((item) => (
                     <div key={item.key} className="flex flex-wrap items-center justify-between gap-2 border-t border-amber-500/20 pt-2">
-                      <p className="min-w-0 flex-1 text-xs text-zinc-200"><strong>{item.label}:</strong> {item.value}</p>
+                      <p className="min-w-0 flex-1 text-xs text-zinc-200"><strong>{t(item.label)}:</strong> {item.value}</p>
                       <div className="flex shrink-0 gap-2">
-                        <button type="button" onClick={() => resolveUnconfirmedDefault(item.key, true)} className="rounded-lg bg-emerald-600/80 px-2.5 py-1 text-[10px] font-semibold text-white hover:bg-emerald-500">Confirmar</button>
-                        <button type="button" onClick={() => resolveUnconfirmedDefault(item.key, false)} className="rounded-lg bg-zinc-800 px-2.5 py-1 text-[10px] text-zinc-300 hover:bg-zinc-700">Limpar</button>
+                        <button type="button" onClick={() => resolveUnconfirmedDefault(item.key, true)} className="rounded-lg bg-emerald-600/80 px-2.5 py-1 text-[10px] font-semibold text-white hover:bg-emerald-500">{t("Confirmar")}</button>
+                        <button type="button" onClick={() => resolveUnconfirmedDefault(item.key, false)} className="rounded-lg bg-zinc-800 px-2.5 py-1 text-[10px] text-zinc-300 hover:bg-zinc-700">{t("Limpar")}</button>
                       </div>
                     </div>
                   ))}
@@ -543,12 +546,12 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                   {/* Informações Básicas */}
                   <div className="p-5 rounded-2xl card-elevated space-y-4">
                     <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                      <User className="w-4 h-4" /> Dados Pessoais Principais
+                      <User className="w-4 h-4" /> {t("Dados Pessoais Principais")}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="sm:col-span-2">
-                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">Nome Completo</label>
+                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Nome Completo")}</label>
                         <input
                           type="text"
                           value={formData.personal.fullName}
@@ -563,7 +566,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                       </div>
 
                       <div className="sm:col-span-2">
-                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">Título Profissional (Headline)</label>
+                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Título Profissional (Headline)")}</label>
                         <input
                           type="text"
                           value={formData.personal.headline}
@@ -574,12 +577,12 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                             })
                           }
                           className="w-full px-3 py-2 rounded-xl text-xs text-zinc-100"
-                          placeholder="Ex: Desenvolvedor Full Stack Senior | React & Node"
+                          placeholder={t("Ex: Desenvolvedor Full Stack Senior | React & Node")}
                         />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">E-mail Principal</label>
+                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("E-mail Principal")}</label>
                         <input
                           type="email"
                           value={formData.personal.email}
@@ -594,7 +597,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">Telefone / WhatsApp</label>
+                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Telefone / WhatsApp")}</label>
                         <input
                           type="text"
                           value={formData.personal.phone}
@@ -609,7 +612,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">Localização (Cidade, UF - País)</label>
+                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Localização (Cidade, UF - País)")}</label>
                         <input
                           type="text"
                           value={formData.personal.location}
@@ -624,7 +627,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">Nacionalidade</label>
+                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Nacionalidade")}</label>
                         <input
                           type="text"
                           value={formData.personal.nationality}
@@ -643,12 +646,12 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                   {/* Links e Redes */}
                   <div className="p-5 rounded-2xl card-elevated space-y-4">
                     <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                      <Globe className="w-4 h-4" /> Links & Portfólio
+                      <Globe className="w-4 h-4" /> {t("Links & Portfólio")}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">LinkedIn URL</label>
+                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("LinkedIn URL")}</label>
                         <input
                           type="url"
                           value={formData.personal.linkedin}
@@ -659,12 +662,12 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                             })
                           }
                           className="w-full px-3 py-2 rounded-xl text-xs text-zinc-100"
-                          placeholder="linkedin.com/in/..."
+                          placeholder={t("linkedin.com/in/...")}
                         />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">GitHub URL</label>
+                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("GitHub URL")}</label>
                         <input
                           type="url"
                           value={formData.personal.github}
@@ -675,12 +678,12 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                             })
                           }
                           className="w-full px-3 py-2 rounded-xl text-xs text-zinc-100"
-                          placeholder="github.com/..."
+                          placeholder={t("github.com/...")}
                         />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">Site / Portfólio</label>
+                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Site / Portfólio")}</label>
                         <input
                           type="url"
                           value={formData.personal.portfolio}
@@ -691,7 +694,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                             })
                           }
                           className="w-full px-3 py-2 rounded-xl text-xs text-zinc-100"
-                          placeholder="https://..."
+                          placeholder={t("https://...")}
                         />
                       </div>
                     </div>
@@ -721,18 +724,18 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                        <Paperclip className="w-4 h-4" /> Anexo Automático de Currículo (PDF)
+                        <Paperclip className="w-4 h-4" /> {t("Anexo Automático de Currículo (PDF)")}
                       </div>
                       {formData.resumeFile && (
                         <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 border border-emerald-800/60 px-2 py-0.5 rounded-full flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
-                          Auto-attach ativo
+                          {t("Auto-attach ativo")}
                         </span>
                       )}
                     </div>
 
                     <p className="text-xs text-zinc-300 leading-relaxed">
-                      Ao preencher vagas com <strong>Ctrl + Shift + .</strong>, o CandiFill anexará este arquivo diretamente no campo de currículo!
+                      {t("Ao preencher vagas com")} <strong>Ctrl + Shift + .</strong>{t(", o CandiFill anexará este arquivo diretamente no campo de currículo!")}
                     </p>
 
                     <input
@@ -747,12 +750,12 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                       <div className="p-3.5 rounded-xl bg-zinc-950/80 border border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 font-bold text-xs shrink-0">
-                            PDF
+                            {t("PDF")}
                           </div>
                           <div className="min-w-0">
                             <p className="text-xs font-semibold text-zinc-100 truncate">{formData.resumeFile.name}</p>
                             <p className="text-[11px] text-zinc-400">
-                              {(formData.resumeFile.size / 1024).toFixed(1)} KB • Pronto para auto-anexo
+                              {(formData.resumeFile.size / 1024).toFixed(1)} {t("KB • Pronto para auto-anexo")}
                             </p>
                           </div>
                         </div>
@@ -762,22 +765,22 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                             type="button"
                             onClick={handleDownloadResume}
                             className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 flex items-center gap-1 transition-colors"
-                            title="Baixar ou visualizar PDF salvo"
+                            title={t("Baixar ou visualizar PDF salvo")}
                           >
-                            <Download className="w-3.5 h-3.5" /> Baixar
+                            <Download className="w-3.5 h-3.5" /> {t("Baixar")}
                           </button>
                           <button
                             type="button"
                             onClick={handleSelectResumeClick}
                             className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 transition-colors"
                           >
-                            Trocar
+                            {t("Trocar")}
                           </button>
                           <button
                             type="button"
                             onClick={handleRemoveResume}
                             className="p-1.5 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                            title="Remover anexo do cofre"
+                            title={t("Remover anexo do cofre")}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -793,10 +796,10 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                         </div>
                         <div>
                           <p className="text-xs font-semibold text-zinc-200">
-                            Arraste seu PDF aqui ou clique para selecionar
+                            {t("Arraste seu PDF aqui ou clique para selecionar")}
                           </p>
                           <p className="text-[11px] text-zinc-400 mt-0.5">
-                            O arquivo será salvo no cofre e anexado automaticamente em formulários de vagas
+                            {t("O arquivo será salvo no cofre e anexado automaticamente em formulários de vagas")}
                           </p>
                         </div>
                       </div>
@@ -806,12 +809,12 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                   {/* Expectativa Salarial */}
                   <div className="p-5 rounded-2xl card-elevated space-y-4">
                     <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                      <Briefcase className="w-4 h-4" /> Pretensão Salarial & Regime
+                      <Briefcase className="w-4 h-4" /> {t("Pretensão Salarial & Regime")}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">Pretensão Desejada</label>
+                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Pretensão Desejada")}</label>
                         <input
                           type="text"
                           value={formData.salary.desiredSalary}
@@ -822,12 +825,12 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                             })
                           }
                           className="w-full px-3 py-2 rounded-xl text-xs text-zinc-100"
-                          placeholder="Ex: 18.000"
+                          placeholder={t("Ex: 18.000")}
                         />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">Pretensão Mínima</label>
+                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Pretensão Mínima")}</label>
                         <input
                           type="text"
                           value={formData.salary.minimumSalary}
@@ -838,12 +841,12 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                             })
                           }
                           className="w-full px-3 py-2 rounded-xl text-xs text-zinc-100"
-                          placeholder="Ex: 15.000"
+                          placeholder={t("Ex: 15.000")}
                         />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">Moeda / Formato</label>
+                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Moeda / Formato")}</label>
                         <input
                           type="text"
                           value={formData.salary.currency}
@@ -854,12 +857,12 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                             })
                           }
                           className="w-full px-3 py-2 rounded-xl text-xs text-zinc-100"
-                          placeholder="Ex: BRL (R$) ou USD ($)"
+                          placeholder={t("Ex: BRL (R$) ou USD ($)")}
                         />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">Modelo de Contratação</label>
+                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Modelo de Contratação")}</label>
                         <input
                           type="text"
                           value={formData.salary.contractType}
@@ -870,12 +873,12 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                             })
                           }
                           className="w-full px-3 py-2 rounded-xl text-xs text-zinc-100"
-                          placeholder="Ex: PJ, CLT ou Ambos"
+                          placeholder={t("Ex: PJ, CLT ou Ambos")}
                         />
                       </div>
 
                       <div className="sm:col-span-2">
-                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">Disponibilidade de Início</label>
+                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Disponibilidade de Início")}</label>
                         <input
                           type="text"
                           value={formData.salary.availability}
@@ -886,7 +889,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                             })
                           }
                           className="w-full px-3 py-2 rounded-xl text-xs text-zinc-100"
-                          placeholder="Ex: Imediata ou 15 dias de aviso prévio"
+                          placeholder={t("Ex: Imediata ou 15 dias de aviso prévio")}
                         />
                       </div>
                     </div>
@@ -900,10 +903,10 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
           {activeTab === 'summaries' && (
             <div className="w-full space-y-6 animate-fade-in">
               <div>
-                <h2 className="text-base font-semibold text-zinc-100">Resumos Profissionais & Apresentações</h2>
+                <h2 className="text-base font-semibold text-zinc-100">{t("Resumos Profissionais & Apresentações")}</h2>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Textos longos para campos de bio, cover letters e introduções. Use o botão{' '}
-                  <span className="text-emerald-400 font-medium">✨ Refinar com IA</span> para otimizar tom e impacto.
+                  {t("Textos longos para campos de bio, cover letters e introduções. Use o botão")}{' '}
+                  <span className="text-emerald-400 font-medium">{t("✨ Refinar com IA")}</span> {t("para otimizar tom e impacto.")}
                 </p>
               </div>
 
@@ -913,8 +916,8 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                   <div className="p-5 rounded-2xl card-elevated space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="text-xs font-semibold text-zinc-200">Resumo Curto / Pitch de Apresentação</span>
-                        <p className="text-[11px] text-zinc-400">Ideal para campos de bio limitados (2 a 3 frases).</p>
+                        <span className="text-xs font-semibold text-zinc-200">{t("Resumo Curto / Pitch de Apresentação")}</span>
+                        <p className="text-[11px] text-zinc-400">{t("Ideal para campos de bio limitados (2 a 3 frases).")}</p>
                       </div>
                       <button
                         onClick={() =>
@@ -926,7 +929,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                         }
                         className="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-medium flex items-center gap-1.5 transition-colors"
                       >
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Refinar com IA
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> {t("Refinar com IA")}
                       </button>
                     </div>
 
@@ -947,8 +950,8 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                   <div className="p-5 rounded-2xl card-elevated space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="text-xs font-semibold text-zinc-200">Snippet de Carta de Apresentação</span>
-                        <p className="text-[11px] text-zinc-400">Texto padrão para colar no campo de motivação da vaga.</p>
+                        <span className="text-xs font-semibold text-zinc-200">{t("Snippet de Carta de Apresentação")}</span>
+                        <p className="text-[11px] text-zinc-400">{t("Texto padrão para colar no campo de motivação da vaga.")}</p>
                       </div>
                       <button
                         onClick={() =>
@@ -960,7 +963,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                         }
                         className="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-medium flex items-center gap-1.5 transition-colors"
                       >
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Refinar com IA
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> {t("Refinar com IA")}
                       </button>
                     </div>
 
@@ -982,8 +985,8 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                 <div className="p-5 rounded-2xl card-elevated space-y-3 flex flex-col h-full">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-xs font-semibold text-zinc-200">Resumo Profissional Completo</span>
-                      <p className="text-[11px] text-zinc-400">Histórico detalhado, realizações e stack tecnológica.</p>
+                      <span className="text-xs font-semibold text-zinc-200">{t("Resumo Profissional Completo")}</span>
+                      <p className="text-[11px] text-zinc-400">{t("Histórico detalhado, realizações e stack tecnológica.")}</p>
                     </div>
                     <button
                       onClick={() =>
@@ -995,7 +998,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                       }
                       className="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-medium flex items-center gap-1.5 transition-colors"
                     >
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Refinar com IA
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> {t("Refinar com IA")}
                     </button>
                   </div>
 
@@ -1023,14 +1026,14 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                 <div className="space-y-4">
                   <div className="flex items-center justify-between pb-1">
                     <div>
-                      <h2 className="text-base font-semibold text-zinc-100">Experiências Profissionais</h2>
-                      <p className="text-xs text-zinc-400">Organize os cargos mais recentes para inserção rápida.</p>
+                      <h2 className="text-base font-semibold text-zinc-100">{t("Experiências Profissionais")}</h2>
+                      <p className="text-xs text-zinc-400">{t("Organize os cargos mais recentes para inserção rápida.")}</p>
                     </div>
                     <button
                       onClick={handleAddExperience}
                       className="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-medium flex items-center gap-1.5 transition-colors shrink-0"
                     >
-                      <Plus className="w-3.5 h-3.5" /> Adicionar
+                      <Plus className="w-3.5 h-3.5" /> {t("Adicionar")}
                     </button>
                   </div>
 
@@ -1043,14 +1046,14 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                         <button
                           onClick={() => handleRemoveExperience(exp.id)}
                           className="absolute top-3 right-3 p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                          title="Excluir experiência"
+                          title={t("Excluir experiência")}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pr-8">
                           <div>
-                            <label className="text-[11px] font-medium text-zinc-400 block mb-1">Empresa</label>
+                            <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Empresa")}</label>
                             <input
                               type="text"
                               value={exp.company}
@@ -1064,7 +1067,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                           </div>
 
                           <div>
-                            <label className="text-[11px] font-medium text-zinc-400 block mb-1">Cargo</label>
+                            <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Cargo")}</label>
                             <input
                               type="text"
                               value={exp.role}
@@ -1078,7 +1081,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                           </div>
 
                           <div>
-                            <label className="text-[11px] font-medium text-zinc-400 block mb-1">Período</label>
+                            <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Período")}</label>
                             <div className="flex gap-2">
                               <input
                                 type="text"
@@ -1097,7 +1100,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                               <input
                                 type="text"
                                 value={exp.endDate}
-                                placeholder="Presente"
+                                placeholder={t("Presente")}
                                 disabled={exp.current}
                                 onChange={(e) => {
                                   setFormData((prev) => ({
@@ -1125,16 +1128,16 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                                 }}
                                 className="rounded bg-zinc-950 border-zinc-700 text-emerald-500 focus:ring-0"
                               />
-                              <span className="text-[11px] text-zinc-300">Cargo atual</span>
+                              <span className="text-[11px] text-zinc-300">{t("Cargo atual")}</span>
                             </label>
                           </div>
 
                           <div>
-                            <label className="text-[11px] font-medium text-zinc-400 block mb-1">Localização</label>
+                            <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Localização")}</label>
                             <input
                               type="text"
                               value={exp.location}
-                              placeholder="Remoto / Híbrido"
+                              placeholder={t("Remoto / Híbrido")}
                               onChange={(e) => {
                                 const updated = [...formData.experience];
                                 updated[idx].location = e.target.value;
@@ -1146,7 +1149,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
 
                           <div className="sm:col-span-2">
                             <label className="text-[11px] font-medium text-zinc-400 block mb-1">
-                              Principais Atividades & Conquistas
+                              {t("Principais Atividades & Conquistas")}
                             </label>
                             <textarea
                               rows={3}
@@ -1164,7 +1167,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                     ))}
                     {formData.experience.length === 0 && (
                       <div className="p-8 rounded-2xl border border-dashed border-zinc-800 text-center text-xs text-zinc-500">
-                        Nenhuma experiência cadastrada. Clique no botão acima para adicionar.
+                        {t("Nenhuma experiência cadastrada. Clique no botão acima para adicionar.")}
                       </div>
                     )}
                   </div>
@@ -1174,14 +1177,14 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                 <div className="space-y-4">
                   <div className="flex items-center justify-between pb-1">
                     <div>
-                      <h2 className="text-base font-semibold text-zinc-100">Formação Acadêmica</h2>
-                      <p className="text-xs text-zinc-400">Graduações, cursos superiores e pós-graduações.</p>
+                      <h2 className="text-base font-semibold text-zinc-100">{t("Formação Acadêmica")}</h2>
+                      <p className="text-xs text-zinc-400">{t("Graduações, cursos superiores e pós-graduações.")}</p>
                     </div>
                     <button
                       onClick={handleAddEducation}
                       className="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-medium flex items-center gap-1.5 transition-colors shrink-0"
                     >
-                      <Plus className="w-3.5 h-3.5" /> Adicionar
+                      <Plus className="w-3.5 h-3.5" /> {t("Adicionar")}
                     </button>
                   </div>
 
@@ -1194,14 +1197,14 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                         <button
                           onClick={() => handleRemoveEducation(edu.id)}
                           className="absolute top-3 right-3 p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                          title="Excluir formação"
+                          title={t("Excluir formação")}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pr-8">
                           <div className="sm:col-span-2">
-                            <label className="text-[11px] font-medium text-zinc-400 block mb-1">Instituição</label>
+                            <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Instituição")}</label>
                             <input
                               type="text"
                               value={edu.institution}
@@ -1215,11 +1218,11 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                           </div>
 
                           <div>
-                            <label className="text-[11px] font-medium text-zinc-400 block mb-1">Grau / Nível</label>
+                            <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Grau / Nível")}</label>
                             <input
                               type="text"
                               value={edu.degree}
-                              placeholder="Bacharelado, Pós..."
+                              placeholder={t("Bacharelado, Pós...")}
                               onChange={(e) => {
                                 const updated = [...formData.education];
                                 updated[idx].degree = e.target.value;
@@ -1230,11 +1233,11 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                           </div>
 
                           <div>
-                            <label className="text-[11px] font-medium text-zinc-400 block mb-1">Curso / Área</label>
+                            <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Curso / Área")}</label>
                             <input
                               type="text"
                               value={edu.fieldOfStudy}
-                              placeholder="Ciência da Computação..."
+                              placeholder={t("Ciência da Computação...")}
                               onChange={(e) => {
                                 const updated = [...formData.education];
                                 updated[idx].fieldOfStudy = e.target.value;
@@ -1245,12 +1248,12 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                           </div>
 
                           <div className="sm:col-span-2">
-                            <label className="text-[11px] font-medium text-zinc-400 block mb-1">Ano de Conclusão / Período</label>
+                            <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Ano de Conclusão / Período")}</label>
                             <div className="flex gap-2">
                               <input
                                 type="text"
                                 value={edu.startDate}
-                                placeholder="Início (ex: 2018)"
+                                placeholder={t("Início (ex: 2018)")}
                                 onChange={(e) => {
                                   const updated = [...formData.education];
                                   updated[idx].startDate = e.target.value;
@@ -1261,7 +1264,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                               <input
                                 type="text"
                                 value={edu.endDate}
-                                placeholder="Fim (ex: 2022)"
+                                placeholder={t("Fim (ex: 2022)")}
                                 onChange={(e) => {
                                   const updated = [...formData.education];
                                   updated[idx].endDate = e.target.value;
@@ -1276,7 +1279,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                     ))}
                     {formData.education.length === 0 && (
                       <div className="p-8 rounded-2xl border border-dashed border-zinc-800 text-center text-xs text-zinc-500">
-                        Nenhuma formação cadastrada.
+                        {t("Nenhuma formação cadastrada.")}
                       </div>
                     )}
                   </div>
@@ -1301,10 +1304,26 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
           {activeTab === 'settings' && (
             <div className="w-full space-y-6 animate-fade-in">
               <div>
-                <h2 className="text-base font-semibold text-zinc-100">Configurações & Inteligência Artificial</h2>
+                <h2 className="text-base font-semibold text-zinc-100">{t("Configurações & Inteligência Artificial")}</h2>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Gerencie sua chave de API, modelos de linguagem e temas visuais da extensão.
+                  {t("Gerencie sua chave de API, modelos de linguagem e temas visuais da extensão.")}
                 </p>
+              </div>
+
+              <div className="p-4 rounded-2xl card-elevated flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <label htmlFor="candifill-language" className="text-xs font-semibold text-zinc-100">{t('Idioma da interface')}</label>
+                  <p className="mt-1 text-[11px] text-zinc-400">{t('Escolha o idioma exibido no CandiFill.')}</p>
+                </div>
+                <select
+                  id="candifill-language"
+                  value={locale}
+                  onChange={(event) => setLocale(event.target.value as Locale)}
+                  className="w-full sm:w-56 px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="pt-BR">Português (Brasil)</option>
+                  <option value="en">English</option>
+                </select>
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
@@ -1313,12 +1332,12 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                   {/* Box de IA */}
                   <div className="p-5 rounded-2xl card-elevated space-y-4">
                     <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                      <Sparkles className="w-4 h-4" /> Provedor de IA (Gemini / OpenAI)
+                      <Sparkles className="w-4 h-4" /> {t("Provedor de IA (Gemini / OpenAI)")}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">Provedor</label>
+                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Provedor")}</label>
                         <select
                           value={formData.aiConfig.provider}
                           onChange={(e) =>
@@ -1336,13 +1355,13 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                           }
                           className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-emerald-500"
                         >
-                          <option value="gemini">Google Gemini (Recomendado - Grátis/Rápido)</option>
-                          <option value="openai">OpenAI (ChatGPT / GPT-4o)</option>
+                          <option value="gemini">{t("Google Gemini (Recomendado - Grátis/Rápido)")}</option>
+                          <option value="openai">{t("OpenAI (ChatGPT / GPT-4o)")}</option>
                         </select>
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">Modelo Selecionado</label>
+                        <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Modelo Selecionado")}</label>
                         <input
                           type="text"
                           value={formData.aiConfig.model}
@@ -1352,7 +1371,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                               aiConfig: { ...formData.aiConfig, model: e.target.value },
                             })
                           }
-                          placeholder="gemini-1.5-flash ou gpt-4o-mini"
+                          placeholder={t("gemini-1.5-flash ou gpt-4o-mini")}
                           className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-emerald-500 font-mono"
                         />
                       </div>
@@ -1360,7 +1379,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
 
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-[11px] font-medium text-zinc-400">API Key *</label>
+                        <label className="text-[11px] font-medium text-zinc-400">{t("API Key *")}</label>
                         <button
                           type="button"
                           onClick={() => setShowApiKey(!showApiKey)}
@@ -1383,13 +1402,13 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                         className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-emerald-500 font-mono"
                       />
                       <p className="text-[11px] text-zinc-500 mt-1">
-                        A chave fica no armazenamento local da extensão e é enviada ao provedor escolhido quando você usa recursos de IA. Ela não é enviada às páginas de candidatura.
+                        {t("A chave fica no armazenamento local da extensão e é enviada ao provedor escolhido quando você usa recursos de IA. Ela não é enviada às páginas de candidatura.")}
                       </p>
                     </div>
 
                     <div>
                       <label className="text-[11px] font-medium text-zinc-400 block mb-1">
-                        Instruções Adicionais para IA (Opcional)
+                        {t("Instruções Adicionais para IA (Opcional)")}
                       </label>
                       <textarea
                         rows={2}
@@ -1400,7 +1419,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                             aiConfig: { ...formData.aiConfig, customPrompt: e.target.value },
                           })
                         }
-                        placeholder="Ex: Foque sempre em métricas quantitativas, liderança técnica e resultados ágeis..."
+                        placeholder={t("Ex: Foque sempre em métricas quantitativas, liderança técnica e resultados ágeis...")}
                         className="w-full p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-emerald-500 leading-relaxed"
                       />
                     </div>
@@ -1409,24 +1428,24 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                   {/* Informações de Atalhos da Extensão */}
                   <div className="p-5 rounded-2xl card-elevated space-y-3">
                     <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300 uppercase tracking-wider">
-                      <Keyboard className="w-4 h-4 text-emerald-400" /> Atalhos Globais da Extensão
+                      <Keyboard className="w-4 h-4 text-emerald-400" /> {t("Atalhos Globais da Extensão")}
                     </div>
 
                     <div className="space-y-2 text-xs">
                       <div className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-950 border border-zinc-800/80">
-                        <span className="text-zinc-300">Preencher formulário na aba ativa:</span>
+                        <span className="text-zinc-300">{t("Preencher formulário na aba ativa:")}</span>
                         <kbd className="px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-emerald-400 font-mono text-[11px]">
                           Ctrl + Shift + .
                         </kbd>
                       </div>
                       <div className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-950 border border-zinc-800/80">
-                        <span className="text-zinc-300">Abrir busca rápida Spotlight HUD:</span>
+                        <span className="text-zinc-300">{t("Abrir busca rápida Spotlight HUD:")}</span>
                         <kbd className="px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-emerald-400 font-mono text-[11px]">
                           Alt + Shift + V
                         </kbd>
                       </div>
                       <div className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-950 border border-zinc-800/80">
-                        <span className="text-zinc-300">Salvar alterações no cofre:</span>
+                        <span className="text-zinc-300">{t("Salvar alterações no cofre:")}</span>
                         <kbd className="px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-emerald-400 font-mono text-[11px]">
                           Ctrl + S
                         </kbd>
@@ -1440,7 +1459,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                   {/* Seletor de Temas */}
                   <div className="p-5 rounded-2xl card-elevated space-y-4">
                     <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                      <Palette className="w-4 h-4" /> Personalização de Tema
+                      <Palette className="w-4 h-4" /> {t("Personalização de Tema")}
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -1478,7 +1497,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                               )}
                             </div>
                             <p className="text-[10px] text-zinc-400 line-clamp-2 leading-tight">
-                              {th.description}
+                              {t(th.description)}
                             </p>
                           </button>
                         );
@@ -1489,31 +1508,31 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                   {/* Box de Instruções da Extensão */}
                   <div className="p-5 rounded-2xl card-elevated space-y-4">
                     <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                      <Zap className="w-4 h-4" /> Preenchimento Automático em Vagas
+                      <Zap className="w-4 h-4" /> {t("Preenchimento Automático em Vagas")}
                     </div>
 
                     <p className="text-xs text-zinc-300 leading-relaxed">
-                      O CandiFill detecta formulários em sites como <strong>Gupy, Inhire, Greenhouse, Lever, Workday</strong> e carreiras personalizadas.
+                      {t("O CandiFill detecta formulários em sites como")} <strong>{t("Gupy, Inhire, Greenhouse, Lever, Workday")}</strong> {t("e carreiras personalizadas.")}
                     </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       <div className="p-3.5 rounded-xl bg-zinc-950/70 border border-zinc-800/80 space-y-1">
                         <div className="flex items-center gap-2 font-medium text-zinc-200">
                           <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[11px] font-bold">1</span>
-                          <span>Atalho do Teclado</span>
+                          <span>{t("Atalho do Teclado")}</span>
                         </div>
                         <p className="text-[11px] text-zinc-400">
-                          Pressione <kbd className="text-emerald-400 font-mono bg-zinc-900 px-1 py-0.5 rounded border border-zinc-800">Ctrl+Shift+.</kbd> em qualquer formulário de vaga.
+                          {t("Pressione")} <kbd className="text-emerald-400 font-mono bg-zinc-900 px-1 py-0.5 rounded border border-zinc-800">Ctrl+Shift+.</kbd> {t("em qualquer formulário de vaga.")}
                         </p>
                       </div>
 
                       <div className="p-3.5 rounded-xl bg-zinc-950/70 border border-zinc-800/80 space-y-1">
                         <div className="flex items-center gap-2 font-medium text-zinc-200">
                           <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[11px] font-bold">2</span>
-                          <span>Botão Flutuante</span>
+                          <span>{t("Botão Flutuante")}</span>
                         </div>
                         <p className="text-[11px] text-zinc-400">
-                          O botão flutuante <strong>⚡ Preencher</strong> surge automaticamente no canto de formulários de candidatura.
+                          {t("O botão flutuante")} <strong>{t("⚡ Preencher")}</strong> {t("surge automaticamente no canto de formulários de candidatura.")}
                         </p>
                       </div>
                     </div>
@@ -1522,11 +1541,11 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                   {/* Box de Backup & Restauração */}
                   <div className="p-5 rounded-2xl card-elevated space-y-4">
                     <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                      <Download className="w-4 h-4" /> Backup & Portabilidade do Cofre
+                      <Download className="w-4 h-4" /> {t("Backup & Portabilidade do Cofre")}
                     </div>
 
                     <p className="text-xs text-zinc-300 leading-relaxed">
-                      O backup inclui seu perfil, respostas salvas e o currículo anexado, mas remove a chave de API. Guarde o arquivo em um local privado.
+                      {t("O backup inclui seu perfil, respostas salvas e o currículo anexado, mas remove a chave de API. Guarde o arquivo em um local privado.")}
                     </p>
 
                     <div className="flex flex-wrap gap-3">
@@ -1535,7 +1554,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                         onClick={handleExportBackup}
                         className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 border border-zinc-700 flex items-center gap-2 transition-colors"
                       >
-                        <Download className="w-3.5 h-3.5 text-emerald-400" /> Exportar Backup (.json)
+                        <Download className="w-3.5 h-3.5 text-emerald-400" /> {t("Exportar Backup (.json)")}
                       </button>
 
                       <button
@@ -1543,7 +1562,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                         onClick={handleOpenCvImporter}
                         className="px-4 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-medium flex items-center gap-2 transition-colors"
                       >
-                        <FileUp className="w-3.5 h-3.5 text-emerald-400" /> Importar Currículo ou Backup
+                        <FileUp className="w-3.5 h-3.5 text-emerald-400" /> {t("Importar Currículo ou Backup")}
                       </button>
                     </div>
                   </div>

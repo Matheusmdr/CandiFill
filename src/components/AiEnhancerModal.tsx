@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, Check, Copy, AlertCircle, RefreshCw, X, ArrowRight } from 'lucide-react';
 import { AiConfig } from '../types/profile';
 import { enhanceTextWithAi, cleanAiOutput } from '../services/ai';
+import { useLocale } from '../contexts/LocaleContext';
 
 interface AiEnhancerModalProps {
   isOpen: boolean;
@@ -45,6 +46,7 @@ export const AiEnhancerModal: React.FC<AiEnhancerModalProps> = ({
   onApply,
   onOpenSettings,
 }) => {
+  const { t } = useLocale();
   const [selectedPreset, setSelectedPreset] = useState(TONE_PRESETS[0].id);
   const [enhancedText, setEnhancedText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -109,12 +111,12 @@ export const AiEnhancerModal: React.FC<AiEnhancerModalProps> = ({
             </div>
             <div>
               <h3 className="font-semibold text-zinc-100 flex items-center gap-2 text-base">
-                Refinar com IA
+                {t("Refinar com IA")}
                 <span className="text-xs font-normal text-emerald-400 bg-emerald-950/60 border border-emerald-800/50 px-2 py-0.5 rounded-full">
                   {aiConfig.provider.toUpperCase()} ({aiConfig.model})
                 </span>
               </h3>
-              <p className="text-xs text-zinc-400">Aprimorando: <span className="text-zinc-300 font-medium">{fieldLabel}</span></p>
+              <p className="text-xs text-zinc-400">{t("Aprimorando:")} <span className="text-zinc-300 font-medium">{t(fieldLabel)}</span></p>
             </div>
           </div>
           <button
@@ -132,9 +134,9 @@ export const AiEnhancerModal: React.FC<AiEnhancerModalProps> = ({
             <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 flex items-start gap-3 text-sm">
               <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="font-medium text-amber-300">Chave de API não configurada</p>
+                <p className="font-medium text-amber-300">{t("Chave de API não configurada")}</p>
                 <p className="text-xs text-amber-200/80 mt-1">
-                  Para utilizar o aprimoramento inteligente com Gemini ou OpenAI, informe sua API Key na aba de Configurações.
+                  {t("Para utilizar o aprimoramento inteligente com Gemini ou OpenAI, informe sua API Key na aba de Configurações.")}
                 </p>
                 {onOpenSettings && (
                   <button
@@ -144,7 +146,7 @@ export const AiEnhancerModal: React.FC<AiEnhancerModalProps> = ({
                     }}
                     className="mt-3 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-xs font-medium text-amber-200 flex items-center gap-1.5 transition-colors"
                   >
-                    Ir para Configurações de IA <ArrowRight className="w-3.5 h-3.5" />
+                    {t("Ir para Configurações de IA")} <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
@@ -154,7 +156,7 @@ export const AiEnhancerModal: React.FC<AiEnhancerModalProps> = ({
               {/* Seletor de Estilo / Tom */}
               <div>
                 <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider block mb-2">
-                  Escolha o Objetivo do Aprimoramento:
+                  {t("Escolha o Objetivo do Aprimoramento:")}
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {TONE_PRESETS.map((preset) => (
@@ -168,7 +170,7 @@ export const AiEnhancerModal: React.FC<AiEnhancerModalProps> = ({
                           : 'border-zinc-800 bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
                       }`}
                     >
-                      {preset.label}
+                      {t(preset.label)}
                     </button>
                   ))}
                 </div>
@@ -179,10 +181,10 @@ export const AiEnhancerModal: React.FC<AiEnhancerModalProps> = ({
                 {/* Texto Original */}
                 <div>
                   <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider block mb-1.5">
-                    Original
+                    {t("Original")}
                   </label>
                   <div className="p-3.5 rounded-xl bg-zinc-900/70 border border-zinc-800 text-xs text-zinc-300 leading-relaxed max-h-44 overflow-y-auto whitespace-pre-wrap select-text">
-                    {originalText || <span className="text-zinc-500 italic">Nenhum texto preenchido ainda.</span>}
+                    {originalText || <span className="text-zinc-500 italic">{t("Nenhum texto preenchido ainda.")}</span>}
                   </div>
                 </div>
 
@@ -190,7 +192,7 @@ export const AiEnhancerModal: React.FC<AiEnhancerModalProps> = ({
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs font-medium text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5" /> Sugestão da IA
+                      <Sparkles className="w-3.5 h-3.5" /> {t("Sugestão da IA")}
                     </label>
                     {enhancedText && (
                       <button
@@ -206,13 +208,13 @@ export const AiEnhancerModal: React.FC<AiEnhancerModalProps> = ({
                     {isLoading ? (
                       <div className="flex flex-col items-center justify-center h-28 text-emerald-400 gap-2">
                         <RefreshCw className="w-5 h-5 animate-spin" />
-                        <span className="text-xs text-zinc-400">Refinando com inteligência artificial...</span>
+                        <span className="text-xs text-zinc-400">{t("Refinando com inteligência artificial...")}</span>
                       </div>
                     ) : enhancedText ? (
                       enhancedText
                     ) : (
                       <span className="text-zinc-500 italic">
-                        Clique em &quot;Processar com IA&quot; para gerar a sugestão aprimorada.
+                        {t('Clique em "Processar com IA" para gerar a sugestão aprimorada.')}
                       </span>
                     )}
                   </div>
@@ -221,7 +223,7 @@ export const AiEnhancerModal: React.FC<AiEnhancerModalProps> = ({
 
               {errorMessage && (
                 <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-300">
-                  {errorMessage}
+                  {t(errorMessage)}
                 </div>
               )}
             </>
@@ -234,7 +236,7 @@ export const AiEnhancerModal: React.FC<AiEnhancerModalProps> = ({
             onClick={onClose}
             className="px-4 py-2 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
           >
-            Fechar
+            {t("Fechar")}
           </button>
 
           <div className="flex items-center gap-2">
@@ -245,7 +247,7 @@ export const AiEnhancerModal: React.FC<AiEnhancerModalProps> = ({
             >
               {isLoading ? (
                 <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Processando...
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" /> {t("Processando...")}
                 </>
               ) : (
                 <>
@@ -260,7 +262,7 @@ export const AiEnhancerModal: React.FC<AiEnhancerModalProps> = ({
                 onClick={handleApply}
                 className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-medium text-white flex items-center gap-2 shadow-lg shadow-emerald-950/50 transition-colors"
               >
-                <Check className="w-3.5 h-3.5" /> Aplicar no Perfil
+                <Check className="w-3.5 h-3.5" /> {t("Aplicar no Perfil")}
               </button>
             )}
           </div>

@@ -21,6 +21,7 @@ import { extractText } from 'unpdf';
 import { CandidateProfile, AiConfig, ResumeFile } from '../types/profile';
 import { parseCandidateProfileBackup } from '../services/storage';
 import { parseResumeWithAi } from '../services/ai';
+import { useLocale } from '../contexts/LocaleContext';
 
 interface CvImporterModalProps {
   isOpen: boolean;
@@ -45,6 +46,7 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
   onImport,
   onOpenSettings,
 }) => {
+  const { t } = useLocale();
   const [activeTab, setActiveTab] = useState<'ai' | 'backup'>('ai');
   const [rawText, setRawText] = useState('');
   const [pdfMeta, setPdfMeta] = useState<PdfMeta | null>(null);
@@ -285,10 +287,10 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
             </div>
             <div>
               <h3 className="font-semibold text-zinc-100 text-sm flex items-center gap-2">
-                Importar Currículo em PDF
+                {t("Importar Currículo em PDF")}
               </h3>
               <p className="text-[11px] text-zinc-400">
-                Extraia contatos, histórico e resumos automaticamente com inteligência artificial.
+                {t("Extraia contatos, histórico e resumos automaticamente com inteligência artificial.")}
               </p>
             </div>
           </div>
@@ -311,7 +313,7 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
             }`}
           >
             <Sparkles className="w-3.5 h-3.5" />
-            Extração de Currículo (PDF)
+            {t("Extração de Currículo (PDF)")}
           </button>
           <button
             onClick={() => setActiveTab('backup')}
@@ -322,7 +324,7 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
             }`}
           >
             <Database className="w-3.5 h-3.5" />
-            Restaurar Backup JSON
+            {t("Restaurar Backup JSON")}
           </button>
         </div>
 
@@ -334,9 +336,9 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
                 <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 flex items-start gap-2.5 text-xs">
                   <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="font-semibold text-amber-300">Chave de API não configurada</p>
+                    <p className="font-semibold text-amber-300">{t("Chave de API não configurada")}</p>
                     <p className="mt-0.5 text-amber-200/80 text-[11px]">
-                      Para extrair os dados do seu PDF com Gemini ou OpenAI, informe sua API Key na aba de configurações.
+                      {t("Para extrair os dados do seu PDF com Gemini ou OpenAI, informe sua API Key na aba de configurações.")}
                     </p>
                     <button
                       onClick={() => {
@@ -345,7 +347,7 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
                       }}
                       className="mt-2 px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-medium flex items-center gap-1 transition-colors"
                     >
-                      Configurações <ArrowRight className="w-3 h-3" />
+                      {t("Configurações")} <ArrowRight className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
@@ -381,19 +383,19 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
                     {isReadingPdf ? (
                       <div className="flex flex-col items-center gap-2 text-emerald-400 py-3">
                         <RefreshCw className="w-7 h-7 animate-spin" />
-                        <span className="text-xs font-medium">Extraindo texto do arquivo PDF...</span>
+                        <span className="text-xs font-medium">{t("Extraindo texto do arquivo PDF...")}</span>
                       </div>
                     ) : pdfMeta ? (
                       <div className="w-full flex items-center justify-between gap-3 text-left">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0 font-bold text-xs">
-                            PDF
+                            {t("PDF")}
                           </div>
                           <div className="min-w-0">
                             <p className="text-xs font-semibold text-zinc-100 truncate">{pdfMeta.name}</p>
                             <p className="text-[11px] text-zinc-400">
                               {pdfMeta.size} • {pdfMeta.pages} {pdfMeta.pages === 1 ? 'página' : 'páginas'} •{' '}
-                              <span className="text-emerald-400 font-medium">Texto extraído com sucesso</span>
+                              <span className="text-emerald-400 font-medium">{t("Texto extraído com sucesso")}</span>
                             </p>
                           </div>
                         </div>
@@ -404,7 +406,7 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
                             onClick={() => triggerFileInput(fileInputRef)}
                             className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-[11px] text-zinc-300 transition-colors"
                           >
-                            Trocar PDF
+                            {t("Trocar PDF")}
                           </button>
                           <button
                             type="button"
@@ -413,7 +415,7 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
                               setRawText('');
                             }}
                             className="p-1 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                            title="Remover arquivo"
+                            title={t("Remover arquivo")}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -426,14 +428,14 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
                         </div>
                         <div>
                           <p className="text-xs font-semibold text-zinc-100">
-                            Arraste e solte seu currículo em PDF aqui
+                            {t("Arraste e solte seu currículo em PDF aqui")}
                           </p>
                           <p className="text-[11px] text-zinc-400 mt-0.5">
-                            ou clique para navegar no seu computador
+                            {t("ou clique para navegar no seu computador")}
                           </p>
                         </div>
                         <span className="inline-block px-2.5 py-0.5 rounded-full bg-zinc-800 text-[10px] text-zinc-400 font-mono border border-zinc-700/60">
-                          Suporta PDF nativo (.pdf), Word exportado, .txt
+                          {t("Suporta PDF nativo (.pdf), Word exportado, .txt")}
                         </span>
                       </div>
                     )}
@@ -456,7 +458,7 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
                           rows={6}
                           value={rawText}
                           onChange={(e) => setRawText(e.target.value)}
-                          placeholder="Texto extraído do PDF..."
+                          placeholder={t("Texto extraído do PDF...")}
                           className="w-full p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 font-mono leading-relaxed select-text"
                         />
                       )}
@@ -481,7 +483,7 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
                             rows={7}
                             value={rawText}
                             onChange={(e) => setRawText(e.target.value)}
-                            placeholder="Cole aqui o texto completo do seu currículo ou seções do LinkedIn..."
+                            placeholder={t("Cole aqui o texto completo do seu currículo ou seções do LinkedIn...")}
                             className="w-full p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 font-mono leading-relaxed select-text"
                           />
                         </div>
@@ -492,7 +494,7 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
                   {errorMessage && (
                     <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-300 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
-                      {errorMessage}
+                      {t(errorMessage)}
                     </div>
                   )}
                 </div>
@@ -501,13 +503,13 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
                 <div className="space-y-4 animate-scale-in">
                   <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 space-y-3">
                     <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
-                      <FileCheck2 className="w-4 h-4" /> Currículo analisado e estruturado com sucesso!
+                      <FileCheck2 className="w-4 h-4" /> {t("Currículo analisado e estruturado com sucesso!")}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
                       <div className="p-3 rounded-lg bg-zinc-950/80 border border-zinc-800/80">
                         <span className="text-[11px] text-zinc-400 flex items-center gap-1.5 mb-1">
-                          <User className="w-3.5 h-3.5 text-blue-400" /> Identificação & Contato
+                          <User className="w-3.5 h-3.5 text-blue-400" /> {t("Identificação & Contato")}
                         </span>
                         <p className="font-semibold text-zinc-100 truncate">
                           {extractedProfile.personal.fullName || '(Nome não identificado)'}
@@ -522,10 +524,10 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
 
                       <div className="p-3 rounded-lg bg-zinc-950/80 border border-zinc-800/80">
                         <span className="text-[11px] text-zinc-400 flex items-center gap-1.5 mb-1">
-                          <Briefcase className="w-3.5 h-3.5 text-rose-400" /> Histórico Profissional
+                          <Briefcase className="w-3.5 h-3.5 text-rose-400" /> {t("Histórico Profissional")}
                         </span>
                         <p className="font-semibold text-zinc-100">
-                          {extractedProfile.experience.length} experiência(s) identificada(s)
+                          {extractedProfile.experience.length} {t("experiência(s) identificada(s)")}
                         </p>
                         <div className="text-[11px] text-zinc-400 truncate mt-1">
                           {extractedProfile.experience.map((e) => e.role + ' @ ' + e.company).join('; ') || 'Nenhuma'}
@@ -534,10 +536,10 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
 
                       <div className="p-3 rounded-lg bg-zinc-950/80 border border-zinc-800/80">
                         <span className="text-[11px] text-zinc-400 flex items-center gap-1.5 mb-1">
-                          <GraduationCap className="w-3.5 h-3.5 text-indigo-400" /> Formação Acadêmica
+                          <GraduationCap className="w-3.5 h-3.5 text-indigo-400" /> {t("Formação Acadêmica")}
                         </span>
                         <p className="font-semibold text-zinc-100">
-                          {extractedProfile.education.length} curso(s) identificado(s)
+                          {extractedProfile.education.length} {t("curso(s) identificado(s)")}
                         </p>
                         <div className="text-[11px] text-zinc-400 truncate mt-1">
                           {extractedProfile.education.map((e) => e.fieldOfStudy + ' (' + e.institution + ')').join('; ') || 'Nenhuma'}
@@ -546,9 +548,9 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
 
                       <div className="p-3 rounded-lg bg-zinc-950/80 border border-zinc-800/80">
                         <span className="text-[11px] text-zinc-400 flex items-center gap-1.5 mb-1">
-                          <FileText className="w-3.5 h-3.5 text-amber-400" /> Resumos & Pitch
+                          <FileText className="w-3.5 h-3.5 text-amber-400" /> {t("Resumos & Pitch")}
                         </span>
-                        <p className="font-semibold text-zinc-100 truncate">Pitch & Resumos Estruturados</p>
+                        <p className="font-semibold text-zinc-100 truncate">{t("Pitch & Resumos Estruturados")}</p>
                         <p className="text-[11px] text-zinc-400 line-clamp-2 mt-1">
                           {extractedProfile.summary.shortSummary}
                         </p>
@@ -557,7 +559,7 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
                   </div>
 
                   <p className="text-[11px] text-zinc-400">
-                    Como deseja salvar estes dados no seu cofre?
+                    {t("Como deseja salvar estes dados no seu cofre?")}
                   </p>
                 </div>
               )}
@@ -569,9 +571,9 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
               <div className="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 text-center space-y-3">
                 <Database className="w-8 h-8 text-emerald-400 mx-auto" />
                 <div>
-                  <h4 className="text-sm font-semibold text-zinc-100">Restaurar do Arquivo de Backup</h4>
+                  <h4 className="text-sm font-semibold text-zinc-100">{t("Restaurar do Arquivo de Backup")}</h4>
                   <p className="text-xs text-zinc-400 mt-1 max-w-md mx-auto">
-                    Selecione um arquivo <code>.json</code> exportado do CandiFill para recuperar todas as suas informações instantaneamente.
+                    {t("Selecione um arquivo")} <code>.json</code> {t("exportado do CandiFill para recuperar todas as suas informações instantaneamente.")}
                   </p>
                 </div>
                 <button
@@ -579,7 +581,7 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
                   onClick={() => triggerFileInput(jsonFileInputRef)}
                   className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-medium text-white inline-flex items-center gap-2 transition-colors"
                 >
-                  <Upload className="w-4 h-4" /> Escolher Arquivo JSON
+                  <Upload className="w-4 h-4" /> {t("Escolher Arquivo JSON")}
                 </button>
                 <input
                   ref={jsonFileInputRef}
@@ -593,7 +595,7 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
               {errorMessage && (
                 <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-300 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
-                  {errorMessage}
+                  {t(errorMessage)}
                 </div>
               )}
             </div>
@@ -606,7 +608,7 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
             onClick={onClose}
             className="px-3.5 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
           >
-            Cancelar
+            {t("Cancelar")}
           </button>
 
           {activeTab === 'ai' && (
@@ -619,11 +621,11 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
                 >
                   {isLoading ? (
                     <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Analisando Currículo...
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" /> {t("Analisando Currículo...")}
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-3.5 h-3.5" /> Analisar com IA
+                      <Sparkles className="w-3.5 h-3.5" /> {t("Analisar com IA")}
                     </>
                   )}
                 </button>
@@ -633,20 +635,20 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
                     onClick={() => setExtractedProfile(null)}
                     className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 transition-colors"
                   >
-                    Voltar
+                    {t("Voltar")}
                   </button>
                   <button
                     onClick={handleApplyMerge}
                     className="px-3.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-emerald-300 border border-emerald-500/30 transition-colors"
-                    title="Mantém os dados atuais e adiciona as novas experiências e formações"
+                    title={t("Mantém os dados atuais e adiciona as novas experiências e formações")}
                   >
-                    Mesclar com Perfil Atual
+                    {t("Mesclar com Perfil Atual")}
                   </button>
                   <button
                     onClick={handleApplyFull}
                     className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-medium text-white flex items-center gap-1.5 shadow-lg shadow-emerald-950/50 transition-colors"
                   >
-                    <Check className="w-3.5 h-3.5" /> Substituir Perfil Completo
+                    <Check className="w-3.5 h-3.5" /> {t("Substituir Perfil Completo")}
                   </button>
                 </>
               )}

@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "CandiFill"
+  },
+  "extensionDescription": {
+    "message": "Fill job application forms with your saved profile and reusable answers."
+  },
+  "actionTitle": {
+    "message": "Fill form in active tab with CandiFill"
+  },
+  "commandDescription": {
+    "message": "Fill the active tab's job application form with CandiFill"
+  }
+}

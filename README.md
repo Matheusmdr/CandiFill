@@ -1,65 +1,47 @@
 # CandiFill
 
-Extensão de navegador para agilizar candidaturas a vagas. O CandiFill mantém um cofre local com seus dados profissionais, preenche campos compatíveis e permite revisar respostas novas antes de guardá-las.
+CandiFill is a Firefox extension that helps you fill out job applications using your saved professional profile and reusable answers. Your profile stays in the browser, and you review new answers before saving them.
 
-> **Estado do projeto:** preparando a primeira publicação. A instalação normal pelo Firefox Add-ons será ligada aqui após a aprovação da listagem. Até lá, este README explica como testar a versão a partir do código-fonte.
+> **Project status:** preparing for its first public release. The Firefox Add-ons installation link will be added after Mozilla approves the listing. Until then, use the source installation steps below.
 
-Se você já usava uma versão de desenvolvimento anterior, exporte seu cofre em JSON antes de instalar a CandiFill e depois importe o arquivo. A nova identidade da extensão usa um armazenamento separado no Firefox.
+## Features
 
-## Recursos
+- Fill compatible application fields without replacing information you have already entered or submitting forms for you.
+- Review answers you enter in application forms and choose which ones to save for reuse.
+- Keep contact details, work history, education, reusable answers, and your resume in a local profile.
+- Use the interface in English or Brazilian Portuguese. The browser language is selected automatically, and you can change it in Settings.
+- Import resume details from a PDF and refine text with your own Google Gemini or OpenAI API key. Text is sent directly to the provider you choose when you use these features.
+- Export and restore your profile as JSON. API keys are excluded from backups.
 
-- Preenchimento de campos compatíveis com os dados do seu perfil, sem substituir respostas que você já digitou e sem enviar formulários.
-- Revisão manual de respostas novas. A captura passiva só é armada em páginas reconhecidas como candidatura; acionando o CandiFill manualmente, você também pode ativá-la. Sugestões não confirmadas ficam temporariamente na sessão do navegador e só são adicionadas ao perfil depois da sua confirmação.
-- Cofre local para dados pessoais, experiência, formação, respostas reutilizáveis e currículo.
-- Importação de currículo e refinamento de texto usando uma chave própria do Google Gemini ou da OpenAI. O texto selecionado para esses recursos é enviado diretamente ao provedor escolhido.
-- Backup e restauração do perfil em JSON; a chave de API é omitida do backup.
+Read the [Privacy Policy in English](docs/PRIVACY.md) or [Portuguese](docs/PRIVACIDADE.md) before using the extension.
 
-Leia a [Política de Privacidade](docs/PRIVACIDADE.md) antes de usar a extensão.
+## Install from source
 
-## Instalação para uso normal
+The first release is being prepared for **Firefox Add-ons (AMO)**. Until the listing is approved, you can load a temporary build from source. Firefox removes temporary add-ons when it closes.
 
-A distribuição inicial será pelo **Firefox Add-ons (AMO)**, sem custo de instalação para quem usa a extensão. O link de instalação será adicionado depois que a Mozilla aprovar a listagem.
+If you used an earlier development build, export your profile as JSON before installing this version, then import that file into CandiFill. This release uses a new extension identity and therefore has separate Firefox storage.
 
-O Firefox exige uma versão assinada para instalação permanente nas versões Release e Beta. O procedimento abaixo carrega uma versão temporária para avaliação e desenvolvimento; ela será removida quando o Firefox fechar.
+Requirements: Firefox 121 or later, Node.js 22.12 or later, and npm.
 
-## Testar a partir do código-fonte
-
-Requisitos: Firefox 121 ou posterior, Node.js 22.12 ou posterior e npm.
-
-1. Na página pública deste repositório, selecione **Code → Download ZIP** e extraia o arquivo. Também é possível clonar o repositório com Git.
-2. Abra um terminal na pasta extraída e instale as dependências:
+1. Download this repository as a ZIP and extract it, or clone it with Git.
+2. Open a terminal in the project folder and install dependencies:
 
    ```bash
    npm ci
    ```
 
-3. Compile a extensão:
+3. Build the extension:
 
    ```bash
    npm run build
    ```
 
-4. No Firefox, abra `about:debugging#/runtime/this-firefox`.
-5. Selecione **Carregar extensão temporária…** e escolha `dist/manifest.json`.
+4. In Firefox, open `about:debugging#/runtime/this-firefox`.
+5. Select **Load Temporary Add-on…** and choose `dist/manifest.json`.
 
-No PowerShell do Windows, se a política de execução bloquear `npm.ps1`, use `npm.cmd ci` e `npm.cmd run build`.
+On Windows PowerShell, if the execution policy blocks `npm.ps1`, run `npm.cmd ci` and `npm.cmd run build` instead.
 
-Para testar mudanças, rode `npm test` e gere novamente a pasta `dist` com `npm run build`. A pasta `dist` é saída de compilação; não edite seus arquivos diretamente.
-
-## Navegadores
-
-A primeira distribuição será preparada para Firefox 121+. O projeto ainda não passou por smoke tests em todos os ATS e navegadores listados em versões anteriores do README; compatibilidade só será anunciada depois de verificação manual. Zen Browser pode aceitar extensões do Firefox, mas ainda precisa de teste próprio.
-
-## Privacidade e permissões
-
-- O perfil e o currículo ficam no armazenamento local da extensão no navegador.
-- Respostas capturadas para revisão ficam na sessão da extensão, associadas à aba e ao site, por até 15 minutos. Elas não são salvas no perfil sem confirmação.
-- Os recursos de IA enviam o texto necessário ao provedor escolhido (Gemini ou OpenAI) quando você os aciona; a extensão não opera um servidor próprio de IA.
-- O content script usa acesso a páginas para detectar e preencher formulários; a captura passiva é limitada a páginas reconhecidas como candidatura. Veja a política para os dados processados e as limitações dos filtros.
-
-Consulte a [Política de Privacidade](docs/PRIVACIDADE.md) para detalhes.
-
-## Desenvolvimento
+## Development
 
 ```bash
 npm ci
@@ -67,14 +49,27 @@ npm test
 npm run build
 ```
 
-- `src/`: aplicação React, content script, background e serviços.
-- `public/`: manifesto e ícones da extensão.
-- `docs/`: política de privacidade.
+- `src/` contains the React application, content script, background script, and services.
+- `public/` contains the extension manifest and icons.
+- `docs/` contains the privacy policies in English and Portuguese.
 
-## Contribuições e problemas
+`dist/` is generated build output. Edit the source files instead.
 
-Relate problemas pela aba **Issues** deste repositório. Não inclua currículos, chaves de API, respostas de formulários ou outros dados pessoais em issues. Para suporte ou para reportar uma falha de segurança em privado, escreva para [matheusmdr@hotmail.com](mailto:matheusmdr@hotmail.com).
+## Browser support
 
-## Licença
+The first release targets Firefox 121 and later. Compatibility with individual job application sites and other Firefox-based browsers has not been fully verified yet. CandiFill does not claim universal support for every application form.
 
-Este projeto é distribuído sob a licença MIT. Consulte [LICENSE](LICENSE).
+## Privacy and permissions
+
+- Your profile and resume are stored in the extension's local browser storage.
+- Answers waiting for your review are kept in the extension session, associated with the tab and site, for up to 15 minutes. They are not added to your profile unless you confirm.
+- AI features send the text needed for the requested action directly to your selected provider (Gemini or OpenAI). CandiFill does not run its own AI server.
+- The content script accesses webpages to detect and fill forms. Passive answer capture is limited to pages recognized as job applications. See the [Privacy Policy](docs/PRIVACIDADE.md) for details and limitations.
+
+## Issues and support
+
+Report bugs through this repository's **Issues** tab. Do not include resumes, API keys, form answers, or other personal information in public issues. For support or to report a security issue privately, email [matheusmdr@hotmail.com](mailto:matheusmdr@hotmail.com).
+
+## License
+
+CandiFill is distributed under the MIT License. See [LICENSE](LICENSE).

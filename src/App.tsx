@@ -3,8 +3,10 @@ import { CandidateProfile } from './types/profile';
 import { loadCandidateProfile, saveCandidateProfile, onProfileUpdated, DEFAULT_PROFILE } from './services/storage';
 import { SpotlightOverlay } from './components/SpotlightOverlay';
 import { VaultManager } from './components/VaultManager';
+import { useLocale } from './contexts/LocaleContext';
 
 export const App: React.FC = () => {
+  const { t, tp } = useLocale();
   const [profile, setProfile] = useState<CandidateProfile>(DEFAULT_PROFILE);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -59,12 +61,12 @@ export const App: React.FC = () => {
       try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab || !tab.id) {
-          showToast('Nenhuma aba ativa encontrada.', 'error');
+          showToast(t('Nenhuma aba ativa encontrada.'), 'error');
           return;
         }
 
         if (tab.url && /^(about:|chrome:|chrome-extension:|moz-extension:|edge:|brave:|opera:|vivaldi:)/i.test(tab.url)) {
-          showToast('O navegador bloqueia o preenchimento em páginas internas. Abra uma página de candidatura.', 'info');
+          showToast(t('O navegador bloqueia o preenchimento em páginas internas. Abra uma página de candidatura.'), 'info');
           return;
         }
 
@@ -88,34 +90,39 @@ export const App: React.FC = () => {
                 },
                 () => {
                   if (chrome.runtime.lastError) {
-                    showToast('Esta página protege o acesso a extensões.', 'info');
+                    showToast(t('Esta página protege o acesso a extensões.'), 'info');
                   } else {
                     chrome.tabs.sendMessage(tab.id!, { action: 'AUTOFILL', profile: sanitizedProfile });
-                    showToast('CandiFill disparado na aba ativa!', 'success');
+                    showToast(t('CandiFill disparado na aba ativa!'), 'success');
                   }
                 }
               );
             } else if (response && response.totalFilled !== undefined) {
               if (response.totalFilled > 0) {
                 const skippedMessage = response.fieldsSkipped?.length
-                  ? ` ${response.fieldsSkipped.length} resposta(s) existente(s) preservada(s).`
+                  ? ` ${tp('{count} resposta existente preservada.', '{count} respostas existentes preservadas.', response.fieldsSkipped.length)}`
                   : '';
-                showToast(`✅ ${response.totalFilled} campo(s) preenchido(s).${skippedMessage}`, 'success');
+                const filledMessage = tp('✅ {count} campo preenchido.', '✅ {count} campos preenchidos.', response.totalFilled);
+                showToast(`${filledMessage}${skippedMessage}`, 'success');
               } else if (response.fieldsSkipped?.length) {
-                showToast(`Nenhum campo foi alterado; ${response.fieldsSkipped.length} resposta(s) existente(s) foram preservadas.`, 'info');
+                showToast(tp(
+                  'Nenhum campo foi alterado; {count} resposta existente foi preservada.',
+                  'Nenhum campo foi alterado; {count} respostas existentes foram preservadas.',
+                  response.fieldsSkipped.length
+                ), 'info');
               } else {
-                showToast('Nenhum campo compatível foi preenchido. Você pode completar o formulário e revisar respostas novas.', 'info');
+                showToast(t('Nenhum campo compatível foi preenchido. Você pode completar o formulário e revisar respostas novas.'), 'info');
               }
             } else {
-              showToast('Comando de preenchimento enviado!', 'success');
+              showToast(t('Comando de preenchimento enviado!'), 'success');
             }
           }
         );
       } catch (err: any) {
-        showToast('Erro ao acionar preenchimento: ' + (err.message || err), 'error');
+        showToast(t('Erro ao acionar preenchimento: ') + (err.message || err), 'error');
       }
     } else {
-      showToast('⚡ Modo Web: Abra como extensão para preencher páginas.', 'info');
+      showToast(t('⚡ Modo Web: Abra como extensão para preencher páginas.'), 'info');
     }
   };
 
@@ -124,7 +131,7 @@ export const App: React.FC = () => {
       <div className="w-full h-full min-h-0 flex items-center justify-center bg-zinc-950 text-zinc-400 text-xs font-mono">
         <div className="flex flex-col items-center gap-3">
           <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-          <span>Carregando CandiFill...</span>
+          <span>{t("Carregando CandiFill...")}</span>
         </div>
       </div>
     );
@@ -133,10 +140,10 @@ export const App: React.FC = () => {
   if (loadError) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-zinc-950 px-6 text-center text-zinc-300">
-        <span className="text-sm font-semibold">Não foi possível carregar seu cofre</span>
-        <p className="max-w-md text-xs text-zinc-500">{loadError}</p>
+        <span className="text-sm font-semibold">{t("Não foi possível carregar seu cofre")}</span>
+        <p className="max-w-md text-xs text-zinc-500">{t(loadError)}</p>
         <button onClick={() => window.location.reload()} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500">
-          Tentar novamente
+          {t("Tentar novamente")}
         </button>
       </div>
     );

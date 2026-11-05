@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { CandidateProfile, FlattenedSearchItem } from '../types/profile';
 import { flattenProfileForSearch, onProfileUpdated } from '../services/storage';
+import { useLocale } from '../contexts/LocaleContext';
 
 interface SpotlightOverlayProps {
   profile: CandidateProfile;
@@ -30,6 +31,7 @@ export const SpotlightOverlay: React.FC<SpotlightOverlayProps> = ({
   onClose,
   onSelectItem,
 }) => {
+  const { t } = useLocale();
   const [currentProfile, setCurrentProfile] = useState<CandidateProfile>(profile);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -175,7 +177,7 @@ export const SpotlightOverlay: React.FC<SpotlightOverlayProps> = ({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Pesquise no cofre (nome, e-mail, salário, resumo, cpf)..."
+            placeholder={t("Pesquise no cofre (nome, e-mail, salário, resumo, cpf)...")}
             className="flex-1 bg-transparent text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none font-medium"
           />
 
@@ -190,13 +192,13 @@ export const SpotlightOverlay: React.FC<SpotlightOverlayProps> = ({
 
           <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 bg-zinc-800/70 px-2 py-1 rounded-lg border border-white/[0.08] shrink-0 font-mono">
             <span>↵</span>
-            <span className="text-zinc-300">Copiar</span>
+            <span className="text-zinc-300">{t("Copiar")}</span>
           </div>
 
           {onClose && (
             <button
               onClick={onClose}
-              title="Fechar HUD (Esc)"
+              title={t("Fechar HUD (Esc)")}
               className="text-zinc-400 hover:text-white p-1 hover:bg-zinc-800/80 rounded-lg transition-colors"
             >
               <X className="w-4 h-4" />
@@ -216,7 +218,7 @@ export const SpotlightOverlay: React.FC<SpotlightOverlayProps> = ({
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 border border-transparent'
               }`}
             >
-              {cat}
+              {t(cat)}
             </button>
           ))}
         </div>
@@ -231,9 +233,9 @@ export const SpotlightOverlay: React.FC<SpotlightOverlayProps> = ({
               <div className="w-12 h-12 rounded-2xl bg-zinc-900/80 border border-zinc-800 flex items-center justify-center mb-3">
                 <Search className="w-6 h-6 opacity-40 text-emerald-400" />
               </div>
-              <p className="text-xs font-medium text-zinc-300">Nenhum dado encontrado para &quot;{query}&quot;</p>
+              <p className="text-xs font-medium text-zinc-300">{t('Nenhum dado encontrado para "')}{query}&quot;</p>
               <p className="text-[11px] text-zinc-500 mt-1 max-w-xs">
-                Tente pesquisar por nome, telefone, cargo, pretensão salarial ou palavras-chave do resumo.
+                {t("Tente pesquisar por nome, telefone, cargo, pretensão salarial ou palavras-chave do resumo.")}
               </p>
             </div>
           ) : (
@@ -265,9 +267,9 @@ export const SpotlightOverlay: React.FC<SpotlightOverlayProps> = ({
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold truncate text-zinc-100">{item.label}</span>
+                        <span className="text-xs font-semibold truncate text-zinc-100">{t(item.label)}</span>
                         <span className="text-[10px] text-zinc-400 font-mono bg-zinc-900/80 px-2 py-0.5 rounded-md border border-white/[0.06]">
-                          {item.category}
+                          {t(item.category)}
                         </span>
                       </div>
                       <p className="text-[11px] text-zinc-400 truncate mt-0.5 font-mono">
@@ -280,17 +282,17 @@ export const SpotlightOverlay: React.FC<SpotlightOverlayProps> = ({
                     <button
                       type="button"
                       onClick={(e) => handleCopyOnly(e, item)}
-                      title="Copiar apenas sem colar (clipboard)"
+                      title={t("Copiar apenas sem colar (clipboard)")}
                       className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700/60 transition-colors"
                     >
                       {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                     </button>
                     <button
                       type="button"
-                      title="Copiar valor do campo"
+                      title={t("Copiar valor do campo")}
                       className="px-2.5 py-1 rounded-lg bg-emerald-600/30 text-emerald-300 hover:bg-emerald-600/50 border border-emerald-500/40 text-[11px] font-semibold flex items-center gap-1 transition-colors"
                     >
-                      <CornerDownLeft className="w-3 h-3" /> Copiar
+                      <CornerDownLeft className="w-3 h-3" /> {t("Copiar")}
                     </button>
                   </div>
                 </div>
@@ -304,15 +306,15 @@ export const SpotlightOverlay: React.FC<SpotlightOverlayProps> = ({
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 bg-zinc-800/80 rounded border border-white/[0.08] text-zinc-300 font-mono text-[10px]">↑↓</kbd>
-              <span>navegar</span>
+              <span>{t("navegar")}</span>
             </span>
             <span className="flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 bg-zinc-800/80 rounded border border-white/[0.08] text-zinc-300 font-mono text-[10px]">↵</kbd>
-              <span>copiar</span>
+              <span>{t("copiar")}</span>
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 bg-zinc-800/80 rounded border border-white/[0.08] text-zinc-300 font-mono text-[10px]">esc</kbd>
-              <span>fechar</span>
+              <kbd className="px-1.5 py-0.5 bg-zinc-800/80 rounded border border-white/[0.08] text-zinc-300 font-mono text-[10px]">{t("esc")}</kbd>
+              <span>{t("fechar")}</span>
             </span>
           </div>
 
@@ -322,7 +324,7 @@ export const SpotlightOverlay: React.FC<SpotlightOverlayProps> = ({
                 onClick={onOpenVault}
                 className="text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors font-medium hover:underline"
               >
-                <span>Abrir Cofre Completo</span>
+                <span>{t("Abrir Cofre Completo")}</span>
                 <ExternalLink className="w-3 h-3" />
               </button>
             )}

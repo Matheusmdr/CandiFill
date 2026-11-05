@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "CandiFill"
+  },
+  "extensionDescription": {
+    "message": "Preencha formulários de candidatura com seu perfil e respostas reutilizáveis."
+  },
+  "actionTitle": {
+    "message": "Preencher formulário na aba ativa com CandiFill"
+  },
+  "commandDescription": {
+    "message": "Preencher o formulário de candidatura da aba ativa com CandiFill"
+  }
+}
