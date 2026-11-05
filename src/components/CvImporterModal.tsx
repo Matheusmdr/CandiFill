@@ -20,6 +20,7 @@ import {
 import { CandidateProfile, CandidateProfileCollection, AiConfig, ResumeFile } from '../types/profile';
 import { parseCandidateProfileImport } from '../services/storage';
 import { parseResumeWithAi } from '../services/ai';
+import { getFirefoxDataConsentErrorMessage } from '../services/firefoxDataConsent';
 import { useLocale } from '../contexts/LocaleContext';
 
 interface CvImporterModalProps {
@@ -208,6 +209,12 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
 
       setExtractedProfile(extracted);
     } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '';
+      const consentMessage = getFirefoxDataConsentErrorMessage(message, t);
+      if (consentMessage) {
+        setErrorMessage(consentMessage);
+        return;
+      }
       setErrorMessage(
         err instanceof Error ? err.message : 'Falha ao processar o currículo com a IA.'
       );

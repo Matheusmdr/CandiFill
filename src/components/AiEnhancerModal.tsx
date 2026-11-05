@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, Check, Copy, AlertCircle, RefreshCw, X, ArrowRight } from 'lucide-react';
 import { AiConfig } from '../types/profile';
 import { enhanceTextWithAi, cleanAiOutput } from '../services/ai';
+import { getFirefoxDataConsentErrorMessage } from '../services/firefoxDataConsent';
 import { useLocale } from '../contexts/LocaleContext';
 
 interface AiEnhancerModalProps {
@@ -81,6 +82,11 @@ export const AiEnhancerModal: React.FC<AiEnhancerModalProps> = ({
       setEnhancedText(cleanAiOutput(result));
     } catch (err: unknown) {
       const errStr = err instanceof Error ? err.message : String(err);
+      const consentMessage = getFirefoxDataConsentErrorMessage(errStr, t);
+      if (consentMessage) {
+        setErrorMessage(consentMessage);
+        return;
+      }
       setErrorMessage(errStr || 'Falha ao processar solicitação com a IA.');
     } finally {
       setIsLoading(false);

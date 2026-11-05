@@ -565,6 +565,7 @@ describe('answer capture guardrails', () => {
 });
 
 describe('resume AI response validation', () => {
+  beforeEach(() => vi.stubGlobal('browser', { permissions: { request: vi.fn().mockResolvedValue(true) } }));
   afterEach(() => vi.unstubAllGlobals());
 
   it('rejects a response that is not a JSON profile object', async () => {

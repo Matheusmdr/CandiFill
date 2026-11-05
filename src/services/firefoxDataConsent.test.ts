@@ -19,17 +19,17 @@ describe('Firefox data-sharing consent', () => {
     vi.stubGlobal('browser', { permissions: { request: vi.fn().mockResolvedValue(false) } });
 
     await expect(requestFirefoxDataConsent(['personallyIdentifyingInfo']))
-      .rejects.toThrow('Consent to send data to the provider was declined. Local features remain available.');
+      .rejects.toThrow('FIREFOX_DATA_CONSENT_DECLINED');
   });
 
   it('rejects the AI action if Firefox cannot show the consent prompt', async () => {
     vi.stubGlobal('browser', { permissions: { request: vi.fn().mockRejectedValue(new Error('denied')) } });
 
     await expect(requestFirefoxDataConsent(['authenticationInfo']))
-      .rejects.toThrow('Firefox could not open the consent prompt. Please try again.');
+      .rejects.toThrow('FIREFOX_DATA_CONSENT_UNAVAILABLE');
   });
 
-  it('keeps non-Firefox browsers compatible when the Mozilla API is absent', async () => {
+  it('keeps AI usable in browsers without Mozilla\'s consent API', async () => {
     vi.stubGlobal('browser', undefined);
 
     await expect(requestFirefoxDataConsent(['authenticationInfo'])).resolves.toBeUndefined();

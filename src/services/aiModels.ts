@@ -3,6 +3,7 @@ import { requestFirefoxDataConsent } from './firefoxDataConsent';
 export interface AvailableAiModel {
   id: string;
   displayName: string;
+  recommended: boolean;
 }
 
 interface GeminiModelResponse {
@@ -31,11 +32,29 @@ function readApiError(provider: 'gemini' | 'openai', status: number): Error {
 
 function isCompatibleOpenAiChatModel(id: string): boolean {
   const normalized = id.toLowerCase();
-  if (/audio|realtime|image|transcri|\btts\b|embedding|moderation|computer|deep-research|codex/.test(normalized)) {
+  if (/audio|realtime|image|transcri|\btts\b|embedding|moderation|computer|deep-research|codex|\bsearch\b|cyber|\blaw\b|rosalind|sora|guard|safety|instruct/.test(normalized)) {
     return false;
   }
 
-  return /^(gpt-|chatgpt-)|^(o1|o3|o4)(-|$)|^ft:(gpt-|o1|o3|o4)/.test(normalized);
+  // CandiFill needs general-purpose text chat. Reasoning-only and fine-tuned
+  // models are not predictable substitutes for its three prompt workflows.
+  if (/^(o1|o3|o4|ft:)/.test(normalized)) return false;
+  return /^(gpt-|chatgpt-)/.test(normalized);
+}
+
+function isCompatibleGeminiTextModel(id: string, displayName: string): boolean {
+  const normalized = `${id} ${displayName}`.toLowerCase();
+  return /^gemini-/i.test(id)
+    && !/audio|image|tts|text-to-speech|live|transcri|embedding|robotics|deep-research|computer-use/.test(normalized);
+}
+
+function isRecommendedModel(id: string): boolean {
+  return /(?:^|[-.])(flash(?:-lite)?|mini|nano)(?:[-.]|$)/i.test(id);
+}
+
+function compareModels(a: AvailableAiModel, b: AvailableAiModel): number {
+  if (a.recommended !== b.recommended) return a.recommended ? -1 : 1;
+  return a.displayName.localeCompare(b.displayName);
 }
 
 function isShutDown(shutdownDate: unknown): boolean {
@@ -72,15 +91,16 @@ export async function listAvailableAiModels(
         if (typeof model.name !== 'string') continue;
         const supportsGeneration = Array.isArray(model.supportedGenerationMethods)
           && model.supportedGenerationMethods.includes('generateContent');
-        if (!supportsGeneration) continue;
-
         const id = model.name.replace(/^models\//, '');
         if (!id) continue;
+        const displayName = typeof model.displayName === 'string' && model.displayName.trim()
+          ? model.displayName.trim()
+          : id;
+        if (!supportsGeneration || !isCompatibleGeminiTextModel(id, displayName)) continue;
         models.set(id, {
           id,
-          displayName: typeof model.displayName === 'string' && model.displayName.trim()
-            ? model.displayName.trim()
-            : id,
+          displayName,
+          recommended: isRecommendedModel(id),
         });
       }
 
@@ -90,7 +110,7 @@ export async function listAvailableAiModels(
       pageToken = nextPageToken;
     }
 
-    return [...models.values()].sort((a, b) => a.displayName.localeCompare(b.displayName));
+    return [...models.values()].sort(compareModels);
   }
 
   const response = await fetch('https://api.openai.com/v1/models', {
@@ -103,8 +123,8 @@ export async function listAvailableAiModels(
     .filter((model): model is { id: string; shutdown_date?: unknown } =>
       typeof model.id === 'string' && isCompatibleOpenAiChatModel(model.id) && !isShutDown(model.shutdown_date)
     )
-    .map(({ id }) => ({ id, displayName: id }));
-  return models.sort((a, b) => a.id.localeCompare(b.id));
+    .map(({ id }) => ({ id, displayName: id, recommended: isRecommendedModel(id) }));
+  return models.sort(compareModels);
 }
 
 /** Sends a tiny request to the same generation endpoint CandiFill uses to verify the selected model. */

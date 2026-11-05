@@ -3,6 +3,9 @@ export type Locale = 'pt-BR' | 'en';
 export const LOCALE_STORAGE_KEY = 'candifill_locale_v1';
 
 const englishMessages: Record<string, string> = {
+  'Recomendados: rápidos e econômicos': 'Recommended: faster and lower cost',
+  'Outros modelos de texto compatíveis': 'Other compatible text models',
+  'A lista mostra modelos de texto adequados para aprimorar textos, analisar currículos e adaptar perfis. Os recomendados tendem a ser mais rápidos e econômicos. O teste envia uma solicitação curta e pode gerar cobrança do provedor.': 'The list shows text models suited to improve writing, analyze resumes, and tailor profiles. Recommended models tend to be faster and lower cost. The compatibility check sends a short request and may incur provider charges.',
   'O consentimento para enviar dados ao provedor foi recusado. Os recursos locais continuam disponíveis.': 'Consent to send data to the provider was declined. Local features remain available.',
   'O Firefox não conseguiu abrir o pedido de consentimento. Tente novamente.': 'Firefox could not open the consent prompt. Please try again.',
   'Adicionar': 'Add',

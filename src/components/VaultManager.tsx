@@ -37,6 +37,7 @@ import { useLocale } from '../contexts/LocaleContext';
 import { Locale } from '../services/localization';
 import { ProfileManagerModal } from './ProfileManagerModal';
 import { AvailableAiModel, listAvailableAiModels, testAiModel } from '../services/aiModels';
+import { getFirefoxDataConsentErrorMessage } from '../services/firefoxDataConsent';
 
 interface VaultManagerProps {
   profile: CandidateProfile;
@@ -298,6 +299,8 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
 
   const getAiModelErrorMessage = (error: unknown): string => {
     const message = error instanceof Error ? error.message : '';
+    const consentMessage = getFirefoxDataConsentErrorMessage(message, t);
+    if (consentMessage) return consentMessage;
     if (message === 'API_KEY_REQUIRED') return t('Informe a chave de API antes de buscar modelos.');
     if (message === 'MODEL_REQUIRED') return t('Selecione um modelo antes de testar.');
     if (message.endsWith(':EMPTY_MODEL_RESPONSE')) return t('O modelo respondeu sem texto. Verifique se ele aceita geração de texto.');
@@ -1520,11 +1523,24 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                                 : `${formData.aiConfig.model} (${t('ainda não verificado')})`}
                             </option>
                           )}
-                          {availableAiModels.map((model) => (
-                            <option key={model.id} value={model.id}>
-                              {model.displayName === model.id ? model.id : `${model.displayName} · ${model.id}`}
-                            </option>
-                          ))}
+                          {availableAiModels.some((model) => model.recommended) && (
+                            <optgroup label={t('Recomendados: rápidos e econômicos')}>
+                              {availableAiModels.filter((model) => model.recommended).map((model) => (
+                                <option key={model.id} value={model.id}>
+                                  {model.displayName === model.id ? model.id : `${model.displayName} · ${model.id}`}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                          {availableAiModels.some((model) => !model.recommended) && (
+                            <optgroup label={t('Outros modelos de texto compatíveis')}>
+                              {availableAiModels.filter((model) => !model.recommended).map((model) => (
+                                <option key={model.id} value={model.id}>
+                                  {model.displayName === model.id ? model.id : `${model.displayName} · ${model.id}`}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
                         </select>
                       </div>
                     </div>
@@ -1551,7 +1567,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                         </button>
                       </div>
                       <p className="text-[10px] leading-relaxed text-zinc-500">
-                        {t('A busca usa sua chave para listar modelos acessíveis. O teste envia uma solicitação curta ao modelo selecionado e pode gerar cobrança do provedor.')}
+                        {t('A lista mostra modelos de texto adequados para aprimorar textos, analisar currículos e adaptar perfis. Os recomendados tendem a ser mais rápidos e econômicos. O teste envia uma solicitação curta e pode gerar cobrança do provedor.')}
                       </p>
                       {!formData.aiConfig.apiKey.trim() && (
                         <p className="text-[10px] text-amber-300/80">{t('Informe a chave de API antes de buscar modelos.')}</p>
