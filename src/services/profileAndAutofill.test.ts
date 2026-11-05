@@ -63,6 +63,46 @@ describe('autofillCurrentPage', () => {
     expect(result.fieldsSkipped).toHaveLength(1);
   });
 
+  it('attaches the saved resume even when the file input is hidden', () => {
+    document.body.innerHTML = `
+      <form>
+        <label for="resume">Upload your resume (PDF)</label>
+        <input id="resume" name="resume" type="file" accept="application/pdf" style="display: none">
+      </form>`;
+
+    class TestDataTransfer {
+      private selectedFiles: File[] = [];
+      items = { add: (file: File) => this.selectedFiles.push(file) };
+      get files(): FileList {
+        return this.selectedFiles as unknown as FileList;
+      }
+    }
+
+    vi.stubGlobal('DataTransfer', TestDataTransfer);
+    const fileInput = document.querySelector('#resume') as HTMLInputElement;
+    Object.defineProperty(fileInput, 'files', { configurable: true, writable: true, value: [] });
+    const changeHandler = vi.fn();
+    fileInput.addEventListener('change', changeHandler);
+
+    const profile = normalizeCandidateProfile({
+      ...DEFAULT_PROFILE,
+      resumeFile: {
+        name: 'resume.pdf',
+        size: 5,
+        type: 'application/pdf',
+        lastModified: 1,
+        base64: 'JVBERi0=',
+      },
+    });
+
+    const result = autofillCurrentPage(profile);
+
+    expect(result.totalFilled).toBe(1);
+    expect(result.fieldsFilled.some((field) => field.includes('resume.pdf'))).toBe(true);
+    expect((fileInput.files as unknown as File[])[0]?.name).toBe('resume.pdf');
+    expect(changeHandler).toHaveBeenCalledTimes(1);
+  });
+
   it('não inventa nacionalidade, contrato, formação ou disponibilidade', () => {
     document.body.innerHTML = `
       <label for="country">Nacionalidade</label><select id="country" name="country"><option value="">Selecione</option><option value="br">Brasil</option></select>

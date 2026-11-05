@@ -258,12 +258,13 @@ export function autofillCurrentPage(profile: CandidateProfile): AutofillResult {
       el.name ||
       el.id ||
       'Campo sem rótulo';
-    const supportedInputTypes = ['text', 'email', 'tel', 'url', 'number', 'search', 'date', 'radio'];
+    const supportedInputTypes = ['text', 'email', 'tel', 'url', 'number', 'search', 'date', 'radio', 'file'];
+    const isFileInput = el instanceof HTMLInputElement && el.type === 'file';
     if (
       (el instanceof HTMLInputElement && !supportedInputTypes.includes(el.type)) ||
       el.disabled ||
       ('readOnly' in el && el.readOnly) ||
-      !isFieldVisible(el)
+      (!isFileInput && !isFieldVisible(el))
     ) {
       return;
     }
@@ -295,8 +296,19 @@ export function autofillCurrentPage(profile: CandidateProfile): AutofillResult {
 
     // 0. Anexo automático de Currículo em PDF (input[type="file"])
     if (el.type === 'file' && profile.resumeFile) {
-      const parentText = (el.closest('label, .form-group, .field, div') as HTMLElement | null)?.textContent?.slice(0, 150) || '';
-      const tag = ((el.name || '') + ' ' + (el.id || '') + ' ' + (el.getAttribute('aria-label') || '') + ' ' + parentText).toLowerCase();
+      const labelsText = Array.from((el as HTMLInputElement).labels || [])
+        .map((label) => label.textContent || '')
+        .join(' ');
+      const parentText = (el.closest('.upload-zone, .dropzone, .form-group, .field, label') as HTMLElement | null)
+        ?.textContent?.slice(0, 500) || '';
+      const tag = [
+        el.name,
+        el.id,
+        el.getAttribute('aria-label'),
+        el.getAttribute('placeholder'),
+        labelsText,
+        parentText,
+      ].filter(Boolean).join(' ').toLowerCase();
       const accept = (el.getAttribute('accept') || '').toLowerCase();
       const isResumeRelated =
         /curriculo|curr[ií]culo|resume|cv|upload|anexar|anexo|arquivo|document|ficheiro/i.test(tag) ||
