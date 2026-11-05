@@ -1,4 +1,4 @@
-import { CandidateProfile, FlattenedSearchItem, SavedAnswer } from '../types/profile';
+import { CandidateProfile, CandidateProfileCollection, CandidateProfileEntry, FlattenedSearchItem, SavedAnswer } from '../types/profile';
 
 export const PROFILE_SCHEMA_VERSION = 2;
 
@@ -42,6 +42,7 @@ export const DEFAULT_PROFILE: CandidateProfile = {
 };
 
 const STORAGE_KEY = 'jobfill_candidate_profile_v1';
+const PROFILE_COLLECTION_KEY = 'jobfill_profile_collection_v1';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -205,67 +206,250 @@ export function createCandidateProfileBackup(profile: CandidateProfile): Candida
   return { ...normalized, aiConfig: { ...normalized.aiConfig, apiKey: '' } };
 }
 
-/**
- * Carrega o perfil do candidato usando chrome.storage.local ou fallback para localStorage
- */
-export async function loadCandidateProfile(options: { allowLocalStorageFallback?: boolean; includeApiKey?: boolean } = {}): Promise<CandidateProfile> {
-  const includeApiKey = options.includeApiKey ?? true;
-  const withoutApiKey = (profile: CandidateProfile) => includeApiKey
-    ? profile
-    : { ...profile, aiConfig: { ...profile.aiConfig, apiKey: '' } };
-  let profile: CandidateProfile = DEFAULT_PROFILE;
+function createDefaultProfileCollection(profile: CandidateProfile = DEFAULT_PROFILE): CandidateProfileCollection {
+  const normalized = normalizeCandidateProfile(profile);
+  return {
+    schemaVersion: 1,
+    activeProfileId: 'profile-default',
+    profiles: [{
+      id: 'profile-default',
+      name: 'Perfil principal',
+      targetRole: normalized.personal.headline,
+      description: '',
+      createdAt: new Date().toISOString(),
+      profile: normalized,
+    }],
+  };
+}
 
-  // 1. Tenta carregar via chrome.storage.local (Extensão WebExtension)
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+export function normalizeCandidateProfileCollection(
+  value: unknown,
+  fallbackProfile: CandidateProfile = DEFAULT_PROFILE
+): CandidateProfileCollection {
+  if (!isRecord(value) || !Array.isArray(value.profiles)) {
+    return createDefaultProfileCollection(fallbackProfile);
+  }
+
+  const ids = new Set<string>();
+  const profiles: CandidateProfileEntry[] = value.profiles.filter(isRecord).flatMap((entry) => {
+    if (!isRecord(entry.profile)) return [];
+    let id = asString(entry.id, createId('profile'));
+    if (ids.has(id)) id = createId('profile');
+    ids.add(id);
+    const profile = normalizeCandidateProfile(entry.profile);
+    return [{
+      id,
+      name: asString(entry.name, 'New profile').trim() || 'New profile',
+      targetRole: asString(entry.targetRole, profile.personal.headline),
+      description: asString(entry.description),
+      createdAt: asString(entry.createdAt, new Date().toISOString()),
+      profile,
+    }];
+  });
+
+  if (profiles.length === 0) return createDefaultProfileCollection(fallbackProfile);
+  const requestedActiveId = asString(value.activeProfileId);
+  const activeProfileId = profiles.some((entry) => entry.id === requestedActiveId)
+    ? requestedActiveId
+    : profiles[0].id;
+  return { schemaVersion: 1, activeProfileId, profiles };
+}
+
+function syncSharedProfileData(
+  collection: CandidateProfileCollection,
+  sharedSourceId: string
+): CandidateProfileCollection {
+  const source = collection.profiles.find((entry) => entry.id === sharedSourceId)?.profile;
+  if (!source) return collection;
+
+  return {
+    ...collection,
+    profiles: collection.profiles.map((entry) => entry.id === sharedSourceId
+      ? entry
+      : {
+          ...entry,
+          profile: {
+            ...entry.profile,
+            personal: { ...source.personal, headline: entry.profile.personal.headline },
+            education: source.education,
+            unconfirmedDefaults: [
+              ...entry.profile.unconfirmedDefaults.filter((item) => item.key !== 'personal.nationality'),
+              ...source.unconfirmedDefaults.filter((item) => item.key === 'personal.nationality'),
+            ],
+            aiConfig: source.aiConfig,
+            theme: source.theme,
+          },
+        }),
+  };
+}
+
+export function createCandidateProfileCollectionBackup(collection: CandidateProfileCollection) {
+  const normalized = normalizeCandidateProfileCollection(collection);
+  return {
+    format: 'candifill-profile-collection',
+    schemaVersion: 1,
+    activeProfileId: normalized.activeProfileId,
+    profiles: normalized.profiles.map((entry) => ({
+      ...entry,
+      profile: createCandidateProfileBackup(entry.profile),
+    })),
+  };
+}
+
+export type CandidateProfileImport =
+  | { kind: 'profile'; profile: CandidateProfile }
+  | { kind: 'collection'; collection: CandidateProfileCollection };
+
+export function parseCandidateProfileImport(value: unknown): CandidateProfileImport {
+  if (isRecord(value) && value.format === 'candifill-profile-collection' && Array.isArray(value.profiles)) {
+    if (!value.profiles.length || value.profiles.some((entry) => !isRecord(entry) || !isRecord(entry.profile))) {
+      throw new Error('Backup de perfis inválido ou incompleto.');
+    }
+    return { kind: 'collection', collection: normalizeCandidateProfileCollection(value) };
+  }
+  return { kind: 'profile', profile: parseCandidateProfileBackup(value) };
+}
+
+export async function loadCandidateProfileCollection(
+  options: { allowLocalStorageFallback?: boolean } = {}
+): Promise<CandidateProfileCollection> {
+  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
     try {
-      const res = await chrome.storage.local.get(STORAGE_KEY);
-      return withoutApiKey(normalizeCandidateProfile(res?.[STORAGE_KEY] ?? DEFAULT_PROFILE));
+      const result = await chrome.storage.local.get([PROFILE_COLLECTION_KEY, STORAGE_KEY]);
+      if (result?.[PROFILE_COLLECTION_KEY]) {
+        return normalizeCandidateProfileCollection(result[PROFILE_COLLECTION_KEY]);
+      }
+
+      const legacyProfile = normalizeCandidateProfile(result?.[STORAGE_KEY] ?? DEFAULT_PROFILE);
+      const collection = createDefaultProfileCollection(legacyProfile);
+      if (typeof chrome.storage.local.set === 'function') {
+        await chrome.storage.local.set({
+          [PROFILE_COLLECTION_KEY]: collection,
+        });
+        if (typeof chrome.storage.local.remove === 'function') await chrome.storage.local.remove(STORAGE_KEY);
+      }
+      return collection;
     } catch (err) {
       throw new Error(`Não foi possível carregar o perfil da extensão: ${String(err)}`);
     }
   }
 
-  // 2. Fallback para localStorage
   if (options.allowLocalStorageFallback !== false && typeof window !== 'undefined' && window.localStorage) {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        profile = normalizeCandidateProfile(JSON.parse(raw));
-      }
-    } catch (e) {
-      throw new Error(`Não foi possível carregar o perfil local: ${String(e)}`);
+      const rawCollection = localStorage.getItem(PROFILE_COLLECTION_KEY);
+      if (rawCollection) return normalizeCandidateProfileCollection(JSON.parse(rawCollection));
+
+      const rawProfile = localStorage.getItem(STORAGE_KEY);
+      const legacyProfile = rawProfile ? normalizeCandidateProfile(JSON.parse(rawProfile)) : DEFAULT_PROFILE;
+      const collection = createDefaultProfileCollection(legacyProfile);
+      localStorage.setItem(PROFILE_COLLECTION_KEY, JSON.stringify(collection));
+      localStorage.removeItem(STORAGE_KEY);
+      return collection;
+    } catch (err) {
+      throw new Error(`Não foi possível carregar o perfil local: ${String(err)}`);
     }
   }
 
-  return withoutApiKey(profile);
+  return createDefaultProfileCollection();
+}
+
+export async function saveCandidateProfileCollection(
+  collection: CandidateProfileCollection,
+  sharedSourceId = collection.activeProfileId
+): Promise<CandidateProfileCollection> {
+  const normalized = syncSharedProfileData(
+    normalizeCandidateProfileCollection(collection),
+    sharedSourceId
+  );
+  const activeProfile = normalized.profiles.find((entry) => entry.id === normalized.activeProfileId);
+  if (!activeProfile) throw new Error('O perfil ativo não existe.');
+
+  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+    try {
+      await chrome.storage.local.set({
+        [PROFILE_COLLECTION_KEY]: normalized,
+      });
+      if (typeof chrome.storage.local.remove === 'function') await chrome.storage.local.remove(STORAGE_KEY);
+      return normalized;
+    } catch (err) {
+      throw new Error(`Não foi possível salvar os perfis da extensão: ${String(err)}`);
+    }
+  }
+
+  if (typeof chrome === 'undefined' && typeof window !== 'undefined' && window.localStorage) {
+    try {
+      localStorage.setItem(PROFILE_COLLECTION_KEY, JSON.stringify(normalized));
+      localStorage.removeItem(STORAGE_KEY);
+      window.dispatchEvent(new CustomEvent('profile-updated', { detail: activeProfile.profile }));
+      window.dispatchEvent(new CustomEvent('profile-collection-updated', { detail: normalized }));
+      return normalized;
+    } catch (err) {
+      throw new Error(`Não foi possível salvar os perfis locais: ${String(err)}`);
+    }
+  }
+
+  throw new Error('Armazenamento de perfis indisponível.');
+}
+
+export function onCandidateProfileCollectionUpdated(
+  callback: (collection: CandidateProfileCollection) => void
+): () => void {
+  const storageListener = (
+    changes: { [key: string]: chrome.storage.StorageChange },
+    areaName: string
+  ) => {
+    if (areaName === 'local' && changes[PROFILE_COLLECTION_KEY]?.newValue) {
+      callback(normalizeCandidateProfileCollection(changes[PROFILE_COLLECTION_KEY].newValue));
+    }
+  };
+
+  if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+    chrome.storage.onChanged.addListener(storageListener);
+  }
+
+  const domListener = (event: Event) => {
+    const detail = (event as CustomEvent<CandidateProfileCollection>).detail;
+    if (detail) callback(normalizeCandidateProfileCollection(detail));
+  };
+  window.addEventListener('profile-collection-updated', domListener);
+
+  return () => {
+    if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+      chrome.storage.onChanged.removeListener(storageListener);
+    }
+    window.removeEventListener('profile-collection-updated', domListener);
+  };
+}
+
+/**
+ * Carrega o perfil do candidato usando chrome.storage.local ou fallback para localStorage
+ */
+export async function loadCandidateProfile(options: { allowLocalStorageFallback?: boolean; includeApiKey?: boolean } = {}): Promise<CandidateProfile> {
+  const includeApiKey = options.includeApiKey ?? true;
+  const collection = await loadCandidateProfileCollection(options);
+  const activeProfile = collection.profiles.find((entry) => entry.id === collection.activeProfileId)?.profile || DEFAULT_PROFILE;
+  return includeApiKey
+    ? activeProfile
+    : { ...activeProfile, aiConfig: { ...activeProfile.aiConfig, apiKey: '' } };
 }
 
 /**
  * Salva o perfil do candidato no chrome.storage.local e propaga para todas as abas
  */
-export async function saveCandidateProfile(profile: CandidateProfile): Promise<void> {
+export async function saveCandidateProfile(profile: CandidateProfile, profileId?: string): Promise<void> {
   const normalized = normalizeCandidateProfile(profile);
-  // 1. Salva no chrome.storage.local se disponível
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    try {
-      await chrome.storage.local.set({ [STORAGE_KEY]: normalized });
-      return;
-    } catch (err) {
-      throw new Error(`Não foi possível salvar o perfil da extensão: ${String(err)}`);
-    }
+  const collection = await loadCandidateProfileCollection();
+  const targetId = profileId || collection.activeProfileId;
+  if (!collection.profiles.some((entry) => entry.id === targetId)) {
+    throw new Error('O perfil que está sendo editado não existe mais.');
   }
-
-  // 2. Fallback no localStorage
-  if (typeof chrome === 'undefined' && typeof window !== 'undefined' && window.localStorage) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
-      window.dispatchEvent(new CustomEvent('profile-updated', { detail: normalized }));
-    } catch (e) {
-      throw new Error(`Não foi possível salvar o perfil local: ${String(e)}`);
-    }
-  } else {
-    throw new Error('Armazenamento de perfil indisponível.');
-  }
+  const updated: CandidateProfileCollection = {
+    ...collection,
+    profiles: collection.profiles.map((entry) => entry.id === targetId
+      ? { ...entry, targetRole: normalized.personal.headline, profile: normalized }
+      : entry),
+  };
+  await saveCandidateProfileCollection(updated, targetId);
 }
 
 /**
@@ -277,7 +461,13 @@ export function onProfileUpdated(callback: (profile: CandidateProfile) => void):
     changes: { [key: string]: chrome.storage.StorageChange },
     areaName: string
   ) => {
-    if (areaName === 'local' && changes[STORAGE_KEY]?.newValue) {
+    if (areaName !== 'local') return;
+    if (changes[PROFILE_COLLECTION_KEY]?.newValue) {
+      const collection = normalizeCandidateProfileCollection(changes[PROFILE_COLLECTION_KEY].newValue);
+      const activeProfile = collection.profiles.find((entry) => entry.id === collection.activeProfileId)?.profile;
+      if (activeProfile) callback(activeProfile);
+    } else if (changes[STORAGE_KEY]?.newValue) {
+      // Support updates from older extension builds during migration.
       callback(normalizeCandidateProfile(changes[STORAGE_KEY].newValue));
     }
   };

@@ -8,10 +8,11 @@ CandiFill is a Firefox extension that helps you fill out job applications using 
 
 - Fill compatible application fields without replacing information you have already entered or submitting forms for you.
 - Review answers you enter in application forms and choose which ones to save for reuse.
-- Keep contact details, work history, education, reusable answers, and your resume in a local profile.
+- Keep shared contact details and education alongside separate role-specific summaries, work history, answers, salary preferences, and resumes in local application profiles.
+- Switch between profiles for different roles, create a blank profile, or duplicate an existing one. You can also draft a profile tailored to a job description, review and edit the suggestions, then save it.
 - Use the interface in English or Brazilian Portuguese. The browser language is selected automatically, and you can change it in Settings.
-- Import resume details from a PDF and refine text with your own Google Gemini or OpenAI API key. Text is sent directly to the provider you choose when you use these features.
-- Export and restore your profile as JSON. API keys are excluded from backups.
+- Import resume details from a PDF, refine text, or tailor a profile to a job description with your own Google Gemini or OpenAI API key. Text used for each action is sent directly to the provider you choose.
+- Export and restore all profiles as JSON. API keys are excluded from backups.
 
 Read the [Privacy Policy in English](docs/PRIVACY.md) or [Portuguese](docs/PRIVACIDADE.md) before using the extension.
 
@@ -67,9 +68,9 @@ The first release targets Firefox 121 and later. Compatibility with individual j
 
 ## Privacy and permissions
 
-- Your profile and resume are stored in the extension's local browser storage.
+- Your profiles and resumes are stored in the extension's local browser storage. Contact details, education, AI settings, and theme are shared across profiles; role-specific information stays with each profile.
 - Answers waiting for your review are kept in the extension session, associated with the tab and site, for up to 15 minutes. They are not added to your profile unless you confirm.
-- AI features send the text needed for the requested action directly to your selected provider (Gemini or OpenAI). CandiFill does not run its own AI server.
+- AI features send the text needed for the requested action directly to your selected provider (Gemini or OpenAI). Tailoring a profile sends the job description and the active profile's professional summaries and work history; it does not send contact details, the attached resume, or saved answers. Model discovery sends your API key to the provider; checking a selected model sends a short test prompt and may incur usage charges. CandiFill does not run its own AI server.
 - The content script accesses webpages to detect and fill forms. Passive answer capture is limited to pages recognized as job applications. See the [Privacy Policy](docs/PRIVACIDADE.md) for details and limitations.
 
 ## Issues and support

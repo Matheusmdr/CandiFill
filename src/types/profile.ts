@@ -100,6 +100,21 @@ export interface CandidateProfile {
   resumeFile?: ResumeFile;
 }
 
+export interface CandidateProfileEntry {
+  id: string;
+  name: string;
+  targetRole: string;
+  description: string;
+  createdAt: string;
+  profile: CandidateProfile;
+}
+
+export interface CandidateProfileCollection {
+  schemaVersion: 1;
+  activeProfileId: string;
+  profiles: CandidateProfileEntry[];
+}
+
 export interface FlattenedSearchItem {
   id: string;
   label: string;

@@ -2,16 +2,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { autofillCurrentPage } from './autofill';
 import {
   createCandidateProfileBackup,
+  createCandidateProfileCollectionBackup,
   DEFAULT_PROFILE,
+  loadCandidateProfileCollection,
   loadCandidateProfile,
   normalizeCandidateProfile,
+  normalizeCandidateProfileCollection,
+  onProfileUpdated,
+  parseCandidateProfileImport,
   parseCandidateProfileBackup,
+  saveCandidateProfileCollection,
   saveCandidateProfile,
 } from './storage';
 import { getAnswerFieldQuestion, getAnswerProfileField, getTrackedAnswerCaptureFields, isReusableAnswerQuestion, isSafeAnswerCaptureField } from './answerCapture';
 import { mergeSavedAnswers } from './savedAnswers';
 import { createPendingAnswerReviewDraft, normalizePendingAnswerCandidates, PENDING_ANSWER_REVIEW_TTL_MS, readPendingAnswerReviewDraft } from './pendingAnswerReview';
-import { parseResumeWithAi } from './ai';
+import { deriveProfileFromJobDescription, parseResumeWithAi } from './ai';
 import { isLikelyJobApplicationPage } from './pageDetection';
 
 describe('autofillCurrentPage', () => {
@@ -228,6 +234,159 @@ describe('profile storage and backups', () => {
     await expect(loadCandidateProfile()).resolves.toMatchObject({ personal: { fullName: 'Ana Souza' } });
   });
 
+  it('migrates a legacy single profile into the new collection without losing data', async () => {
+    const legacyProfile = normalizeCandidateProfile({
+      ...DEFAULT_PROFILE,
+      personal: { ...DEFAULT_PROFILE.personal, fullName: 'Ana Souza', headline: 'Frontend Developer' },
+    });
+    window.localStorage.setItem('jobfill_candidate_profile_v1', JSON.stringify(legacyProfile));
+
+    const collection = await loadCandidateProfileCollection();
+
+    expect(collection.profiles).toHaveLength(1);
+    expect(collection.profiles[0].profile.personal.fullName).toBe('Ana Souza');
+    expect(collection.profiles[0].targetRole).toBe('Frontend Developer');
+    expect(window.localStorage.getItem('jobfill_candidate_profile_v1')).toBeNull();
+    await expect(loadCandidateProfile()).resolves.toMatchObject({ personal: { fullName: 'Ana Souza' } });
+  });
+
+  it('switches profiles and keeps contact, education, and AI settings shared', async () => {
+    const frontend = normalizeCandidateProfile({
+      ...DEFAULT_PROFILE,
+      personal: { ...DEFAULT_PROFILE.personal, fullName: 'Ana Souza', headline: 'Frontend Developer' },
+    });
+    const backend = normalizeCandidateProfile({
+      ...DEFAULT_PROFILE,
+      personal: { ...DEFAULT_PROFILE.personal, fullName: 'Older name', headline: 'Backend Developer' },
+    });
+    const collection = normalizeCandidateProfileCollection({
+      schemaVersion: 1,
+      activeProfileId: 'frontend',
+      profiles: [
+        { id: 'frontend', name: 'Frontend', profile: frontend },
+        { id: 'backend', name: 'Backend', profile: backend },
+      ],
+    });
+
+    await saveCandidateProfileCollection(collection);
+    await saveCandidateProfile({
+      ...backend,
+      personal: { ...backend.personal, fullName: 'Ana Souza', headline: 'Backend Developer' },
+    }, 'backend');
+
+    const updated = await loadCandidateProfileCollection();
+    expect(updated.activeProfileId).toBe('frontend');
+    expect(updated.profiles.find((entry) => entry.id === 'frontend')?.profile.personal.fullName).toBe('Ana Souza');
+    expect(updated.profiles.find((entry) => entry.id === 'backend')?.profile.personal.fullName).toBe('Ana Souza');
+    expect(updated.profiles.find((entry) => entry.id === 'frontend')?.profile.personal.headline).toBe('Frontend Developer');
+    expect(updated.profiles.find((entry) => entry.id === 'backend')?.profile.personal.headline).toBe('Backend Developer');
+
+    await saveCandidateProfileCollection({ ...updated, activeProfileId: 'backend' });
+    await expect(loadCandidateProfile()).resolves.toMatchObject({ personal: { headline: 'Backend Developer' } });
+  });
+
+  it('preserves the current profile shared data when switching with pending edits', async () => {
+    const frontend = normalizeCandidateProfile({
+      ...DEFAULT_PROFILE,
+      personal: { ...DEFAULT_PROFILE.personal, fullName: 'Old name', headline: 'Frontend Developer' },
+    });
+    const backend = normalizeCandidateProfile({
+      ...DEFAULT_PROFILE,
+      personal: { ...DEFAULT_PROFILE.personal, fullName: 'Old name', headline: 'Backend Developer' },
+    });
+    const collection = normalizeCandidateProfileCollection({
+      schemaVersion: 1,
+      activeProfileId: 'frontend',
+      profiles: [
+        { id: 'frontend', name: 'Frontend', profile: frontend },
+        { id: 'backend', name: 'Backend', profile: backend },
+      ],
+    });
+    const editedFrontend = {
+      ...frontend,
+      personal: { ...frontend.personal, fullName: 'Updated name' },
+    };
+
+    const saved = await saveCandidateProfileCollection({
+      ...collection,
+      activeProfileId: 'backend',
+      profiles: collection.profiles.map((entry) => entry.id === 'frontend'
+        ? { ...entry, profile: editedFrontend }
+        : entry),
+    }, 'frontend');
+
+    expect(saved.activeProfileId).toBe('backend');
+    expect(saved.profiles.every((entry) => entry.profile.personal.fullName === 'Updated name')).toBe(true);
+    expect(saved.profiles.find((entry) => entry.id === 'frontend')?.profile.personal.headline).toBe('Frontend Developer');
+    expect(saved.profiles.find((entry) => entry.id === 'backend')?.profile.personal.headline).toBe('Backend Developer');
+  });
+
+  it('notifies profile listeners with the active profile when the collection changes', () => {
+    let storageListener: ((changes: Record<string, { newValue?: unknown }>, areaName: string) => void) | undefined;
+    Object.defineProperty(globalThis, 'chrome', {
+      configurable: true,
+      value: {
+        storage: {
+          onChanged: {
+            addListener: (listener: typeof storageListener) => { storageListener = listener; },
+            removeListener: vi.fn(),
+          },
+        },
+      } as unknown as typeof chrome,
+    });
+    const callback = vi.fn();
+    const unsubscribe = onProfileUpdated(callback);
+    const collection = normalizeCandidateProfileCollection({
+      schemaVersion: 1,
+      activeProfileId: 'backend',
+      profiles: [
+        { id: 'frontend', name: 'Frontend', profile: DEFAULT_PROFILE },
+        {
+          id: 'backend',
+          name: 'Backend',
+          profile: normalizeCandidateProfile({
+            ...DEFAULT_PROFILE,
+            personal: { ...DEFAULT_PROFILE.personal, headline: 'Backend Developer' },
+          }),
+        },
+      ],
+    });
+
+    storageListener?.({ jobfill_profile_collection_v1: { newValue: collection } }, 'local');
+
+    expect(callback).toHaveBeenCalledWith(expect.objectContaining({
+      personal: expect.objectContaining({ headline: 'Backend Developer' }),
+    }));
+    unsubscribe();
+  });
+
+  it('backs up every profile without copying the API key', () => {
+    const profile = normalizeCandidateProfile({
+      ...DEFAULT_PROFILE,
+      personal: { ...DEFAULT_PROFILE.personal, fullName: 'Ana Souza' },
+      aiConfig: { ...DEFAULT_PROFILE.aiConfig, apiKey: 'private-key' },
+    });
+    const collection = normalizeCandidateProfileCollection({
+      schemaVersion: 1,
+      activeProfileId: 'one',
+      profiles: [
+        { id: 'one', name: 'Frontend', profile },
+        { id: 'two', name: 'Backend', profile: { ...profile, personal: { ...profile.personal, headline: 'Backend Developer' } } },
+      ],
+    });
+
+    const backup = createCandidateProfileCollectionBackup(collection);
+    const restored = parseCandidateProfileImport(backup);
+
+    expect(backup.profiles).toHaveLength(2);
+    expect(backup.profiles[0].profile.aiConfig.apiKey).toBe('');
+    expect(restored.kind).toBe('collection');
+    if (restored.kind === 'collection') {
+      expect(restored.collection.profiles).toHaveLength(2);
+      expect(restored.collection.profiles[1].profile.personal.headline).toBe('Backend Developer');
+    }
+  });
+
   it('does not read the page localStorage when fallback is disabled', async () => {
     window.localStorage.setItem('jobfill_candidate_profile_v1', JSON.stringify({
       ...DEFAULT_PROFILE,
@@ -255,7 +414,20 @@ describe('profile storage and backups', () => {
   it('reports extension storage write failures instead of showing a false success', async () => {
     Object.defineProperty(globalThis, 'chrome', {
       configurable: true,
-      value: { storage: { local: { set: vi.fn().mockRejectedValue(new Error('quota')) } } },
+      value: {
+        storage: {
+          local: {
+            get: vi.fn().mockResolvedValue({
+              jobfill_profile_collection_v1: {
+                schemaVersion: 1,
+                activeProfileId: 'profile-default',
+                profiles: [{ id: 'profile-default', name: 'Default profile', profile: DEFAULT_PROFILE }],
+              },
+            }),
+            set: vi.fn().mockRejectedValue(new Error('quota')),
+          },
+        },
+      },
     });
 
     await expect(saveCandidateProfile(DEFAULT_PROFILE)).rejects.toThrow(/Não foi possível salvar/);
@@ -424,5 +596,57 @@ describe('resume AI response validation', () => {
     expect(profile.personal.nationality).toBe('');
     expect(profile.salary.availability).toBe('');
     expect(profile.customFields[0].category).toBe('Diversos');
+  });
+
+  it('derives a reviewed profile draft without sending contact data or accepting invented experience IDs', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: JSON.stringify({
+          headline: 'Frontend Developer',
+          shortSummary: 'Summary based on source facts.',
+          longSummary: 'Long summary based on source facts.',
+          coverLetterSnippet: 'Intro based on source facts.',
+          experienceOrder: ['experience-1', 'invented-experience'],
+          experienceDescriptions: [
+            { id: 'experience-1', description: 'Existing work rewritten for relevance.' },
+            { id: 'invented-experience', description: 'Invented experience.' },
+          ],
+        }) } }],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const profile = normalizeCandidateProfile({
+      ...DEFAULT_PROFILE,
+      personal: { ...DEFAULT_PROFILE.personal, email: 'ana@example.com', headline: 'Software Developer' },
+      experience: [{
+        id: 'experience-1',
+        company: 'Example Co',
+        role: 'Software Developer',
+        location: 'Remote',
+        startDate: '2022',
+        endDate: '2025',
+        current: false,
+        description: 'Built existing web applications.',
+      }],
+    });
+
+    const suggestion = await deriveProfileFromJobDescription({
+      provider: 'openai',
+      apiKey: 'private-api-key',
+      model: 'gpt-4o-mini',
+      targetRole: 'Frontend Developer',
+      jobDescription: 'We need a frontend engineer.',
+      profile,
+    });
+
+    const requestBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    const sentUserContext = requestBody.messages[1].content as string;
+    expect(sentUserContext).toContain('We need a frontend engineer.');
+    expect(sentUserContext).toContain('Built existing web applications.');
+    expect(sentUserContext).not.toContain('ana@example.com');
+    expect(sentUserContext).not.toContain('private-api-key');
+    expect(suggestion.experienceOrder).toEqual(['experience-1']);
+    expect(suggestion.experienceDescriptions).toEqual({ 'experience-1': 'Existing work rewritten for relevance.' });
   });
 });

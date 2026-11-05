@@ -18,8 +18,8 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { extractText } from 'unpdf';
-import { CandidateProfile, AiConfig, ResumeFile } from '../types/profile';
-import { parseCandidateProfileBackup } from '../services/storage';
+import { CandidateProfile, CandidateProfileCollection, AiConfig, ResumeFile } from '../types/profile';
+import { parseCandidateProfileImport } from '../services/storage';
 import { parseResumeWithAi } from '../services/ai';
 import { useLocale } from '../contexts/LocaleContext';
 
@@ -29,6 +29,7 @@ interface CvImporterModalProps {
   currentProfile: CandidateProfile;
   aiConfig: AiConfig;
   onImport: (newProfile: CandidateProfile) => void;
+  onImportCollection?: (collection: CandidateProfileCollection) => void | Promise<void>;
   onOpenSettings: () => void;
 }
 
@@ -44,6 +45,7 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
   currentProfile,
   aiConfig,
   onImport,
+  onImportCollection,
   onOpenSettings,
 }) => {
   const { t } = useLocale();
@@ -156,11 +158,16 @@ export const CvImporterModal: React.FC<CvImporterModalProps> = ({
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const text = event.target?.result as string;
-        const parsed = parseCandidateProfileBackup(JSON.parse(text));
-        onImport(parsed);
+        const parsed = parseCandidateProfileImport(JSON.parse(text));
+        if (parsed.kind === 'collection') {
+          if (!onImportCollection) throw new Error('A restauração de múltiplos perfis não está disponível nesta janela.');
+          await onImportCollection(parsed.collection);
+        } else {
+          onImport(parsed.profile);
+        }
         onClose();
       } catch (err: unknown) {
         setErrorMessage(

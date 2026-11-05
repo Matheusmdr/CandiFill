@@ -6,13 +6,13 @@ This policy describes how the initial release of CandiFill handles data. It shou
 
 ## Data stored in your browser
 
-CandiFill stores the information you enter or import into your vault in the extension's local browser storage. This may include contact details, work experience, education, reusable answers, your resume, and the API key you configure. CandiFill does not send this profile to its own server.
+CandiFill stores the information you enter or import into your vault in the extension's local browser storage. You can keep multiple application profiles. Contact details, education, AI settings, and theme are shared across profiles; summaries, work experience, salary preferences, custom fields, saved answers, and resumes belong to each profile. The vault also stores the API key you configure. CandiFill does not send your profiles to its own server.
 
 Your interface language preference is also stored locally in the extension.
 
 When a compatible form field was empty and you enter an eligible answer, the extension may create a suggestion for you to review. To keep it available after the form navigates, the suggestion is stored temporarily in the extension session, associated with the tab and domain, for up to 15 minutes. It is only written to your profile after you select **Save**. Dismissing the review removes the suggestion. Automatic filters may miss sensitive information, so review each question and answer before saving.
 
-The JSON backup is created locally for you to download. It may contain your profile, saved answers, and attached resume, but it excludes your API key.
+The JSON backup is created locally for you to download. It may contain all profiles, saved answers, and attached resumes, but it excludes API keys.
 
 ## Data sent to AI providers
 
@@ -20,6 +20,10 @@ CandiFill does not run its own AI server. If you configure an API key and use an
 
 - **Google Gemini:** resume text during extraction, or the professional text you selected for refinement.
 - **OpenAI:** resume text during extraction, or the professional text you selected for refinement.
+
+When you create a profile tailored to a job description, CandiFill sends the job description, target role, and the active profile's headline, summaries, and work history to the selected provider. It does not include contact details, education, saved answers, or the attached resume in this request. The result is shown as an editable draft for you to review before saving.
+
+When you ask CandiFill to find available models, it sends your API key to the selected provider to retrieve the models accessible to that key; no profile or job application text is included in this lookup. If you choose **Test compatibility**, CandiFill sends a short test prompt to the selected model. The provider may count this request toward your usage or charges.
 
 The provider also receives the API key needed to authenticate the request. CandiFill does not send this text to providers until you use an AI feature. Further handling is governed by the selected provider's terms and privacy policy.
 

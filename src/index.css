@@ -343,3 +343,110 @@ select:focus {
   background-clip: text;
 }
 
+.profile-modal-input {
+  width: 100%;
+  border: 1px solid #3f3f46;
+  border-radius: 0.5rem;
+  background: #09090b;
+  padding: 0.5rem 0.75rem;
+  color: #f4f4f5;
+  font-size: 0.75rem;
+  outline: none;
+  transition: border-color 150ms ease;
+}
+
+.profile-modal-input::placeholder {
+  color: #52525b;
+}
+
+.profile-modal-input:focus {
+  border-color: rgba(16, 185, 129, 0.6);
+}
+
+.profile-modal-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 0.5rem;
+  background: rgba(16, 185, 129, 0.15);
+  padding: 0.5rem 0.75rem;
+  color: #a7f3d0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: background-color 150ms ease;
+}
+
+.profile-modal-primary:hover {
+  background: rgba(16, 185, 129, 0.25);
+}
+
+.profile-modal-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border: 1px solid #3f3f46;
+  border-radius: 0.5rem;
+  background: #27272a;
+  padding: 0.5rem 0.75rem;
+  color: #d4d4d8;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: background-color 150ms ease;
+}
+
+.profile-modal-secondary:hover {
+  background: #3f3f46;
+}
+
+.profile-modal-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #27272a;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  color: #a1a1aa;
+  transition: all 150ms ease;
+}
+
+.profile-modal-icon:hover {
+  border-color: #3f3f46;
+  background: #27272a;
+  color: #f4f4f5;
+}
+
+.profile-modal-icon:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.profile-mode-button {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border: 1px solid #27272a;
+  border-radius: 0.5rem;
+  background: rgba(9, 9, 11, 0.6);
+  padding: 0.5rem 0.625rem;
+  color: #a1a1aa;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  transition: all 150ms ease;
+}
+
+.profile-mode-button:hover {
+  border-color: #3f3f46;
+  color: #e4e4e7;
+}
+
+.profile-mode-button-active {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.1);
+  color: #a7f3d0;
+}
+

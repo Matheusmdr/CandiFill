@@ -23,19 +23,28 @@ import {
   Paperclip,
   Eye,
   EyeOff,
+  Users,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
-import { CandidateProfile, ExperienceItem, EducationItem } from '../types/profile';
+import { CandidateProfile, CandidateProfileCollection, ExperienceItem, EducationItem } from '../types/profile';
 import { THEMES } from '../types/theme';
-import { createCandidateProfileBackup } from '../services/storage';
+import { createCandidateProfileCollectionBackup } from '../services/storage';
 import { CustomFieldsEditor } from './CustomFieldsEditor';
 import { AiEnhancerModal } from './AiEnhancerModal';
 import { CvImporterModal } from './CvImporterModal';
 import { useLocale } from '../contexts/LocaleContext';
 import { Locale } from '../services/localization';
+import { ProfileManagerModal } from './ProfileManagerModal';
+import { AvailableAiModel, listAvailableAiModels, testAiModel } from '../services/aiModels';
 
 interface VaultManagerProps {
   profile: CandidateProfile;
-  onSave: (updatedProfile: CandidateProfile) => Promise<void>;
+  profileId: string;
+  profileCollection: CandidateProfileCollection;
+  onSave: (updatedProfile: CandidateProfile, profileId?: string) => Promise<void>;
+  onSaveProfileCollection: (collection: CandidateProfileCollection, sharedSourceId?: string) => Promise<void>;
+  onImportProfileCollection: (collection: CandidateProfileCollection) => Promise<void>;
   onOpenSpotlight?: () => void;
   onAutofillPage?: () => void;
 }
@@ -44,7 +53,11 @@ type TabType = 'personal' | 'summaries' | 'experience' | 'custom' | 'settings';
 
 export const VaultManager: React.FC<VaultManagerProps> = ({
   profile,
+  profileId,
+  profileCollection,
   onSave,
+  onSaveProfileCollection,
+  onImportProfileCollection,
   onOpenSpotlight,
   onAutofillPage,
 }) => {
@@ -55,7 +68,14 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [profileManagerOpen, setProfileManagerOpen] = useState(false);
+  const [availableAiModels, setAvailableAiModels] = useState<AvailableAiModel[]>([]);
+  const [modelsLoadedForProvider, setModelsLoadedForProvider] = useState<'gemini' | 'openai' | null>(null);
+  const [isLoadingAiModels, setIsLoadingAiModels] = useState(false);
+  const [isTestingAiModel, setIsTestingAiModel] = useState(false);
+  const [aiModelStatus, setAiModelStatus] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
   const resumeInputRef = useRef<HTMLInputElement>(null);
+  const aiModelRequestId = useRef(0);
 
   const [isResumeDragging, setIsResumeDragging] = useState(false);
 
@@ -80,7 +100,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
           },
         };
         setFormData(updated);
-        onSave(updated);
+        onSave(updated, profileId);
       }
     };
     reader.readAsDataURL(file);
@@ -108,7 +128,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
     const updated = { ...formData };
     delete updated.resumeFile;
     setFormData(updated);
-    onSave(updated);
+    onSave(updated, profileId);
   };
 
   const handleDownloadResume = () => {
@@ -158,15 +178,21 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
 
   // Debounced auto-save: sincroniza instantaneamente qualquer edição
   const isFirstMount = useRef(true);
+  const lastProfileId = useRef(profileId);
   useEffect(() => {
     if (isFirstMount.current) {
       isFirstMount.current = false;
       return;
     }
 
+    if (lastProfileId.current !== profileId) {
+      lastProfileId.current = profileId;
+      return;
+    }
+
     const timer = setTimeout(async () => {
       try {
-        await onSave(formData);
+        await onSave(formData, profileId);
         setSaveError(null);
       } catch (err) {
         setSaveError(err instanceof Error ? err.message : 'Falha ao salvar alterações.');
@@ -174,9 +200,9 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
     }, 600);
 
     return () => clearTimeout(timer);
-  }, [formData]);
+  }, [formData, profileId]);
   const handleExportBackup = () => {
-    const backup = createCandidateProfileBackup(formData);
+    const backup = createCandidateProfileCollectionBackup(profileCollection);
     const dataUrl = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataUrl);
@@ -190,7 +216,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
   const handleImportProfile = async (newProfile: CandidateProfile) => {
     setFormData(newProfile);
     try {
-      await onSave(newProfile);
+      await onSave(newProfile, profileId);
       setSaveError(null);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
@@ -229,7 +255,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await onSave(formData);
+      await onSave(formData, profileId);
       setSaveError(null);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
@@ -238,6 +264,91 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
       setSaveError(error instanceof Error ? error.message : 'Falha ao salvar alterações.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSwitchProfile = async (nextProfileId: string) => {
+    if (nextProfileId === profileId) return;
+    setIsSaving(true);
+    try {
+      const updatedCollection: CandidateProfileCollection = {
+        ...profileCollection,
+        activeProfileId: nextProfileId,
+        profiles: profileCollection.profiles.map((entry) => entry.id === profileId
+          ? { ...entry, targetRole: formData.personal.headline, profile: formData }
+          : entry),
+      };
+      await onSaveProfileCollection(updatedCollection, profileId);
+      setSaveError(null);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Não foi possível trocar o perfil ativo.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    aiModelRequestId.current += 1;
+    setAvailableAiModels([]);
+    setModelsLoadedForProvider(null);
+    setIsLoadingAiModels(false);
+    setIsTestingAiModel(false);
+    setAiModelStatus(null);
+  }, [formData.aiConfig.provider, formData.aiConfig.apiKey]);
+
+  const getAiModelErrorMessage = (error: unknown): string => {
+    const message = error instanceof Error ? error.message : '';
+    if (message === 'API_KEY_REQUIRED') return t('Informe a chave de API antes de buscar modelos.');
+    if (message === 'MODEL_REQUIRED') return t('Selecione um modelo antes de testar.');
+    if (message.endsWith(':EMPTY_MODEL_RESPONSE')) return t('O modelo respondeu sem texto. Verifique se ele aceita geração de texto.');
+    if (message.includes(':API_KEY_OR_ACCESS:401') || message.includes(':API_KEY_OR_ACCESS:403')) {
+      return t('Chave inválida ou sem acesso aos modelos deste provedor.');
+    }
+    if (message.includes(':RATE_LIMIT:429')) return t('O provedor limitou as solicitações. Aguarde e tente novamente.');
+    if (message.includes(':MODEL_REQUEST_FAILED:')) return t('O provedor não conseguiu concluir a solicitação. Confira a chave e tente novamente.');
+    return t('Não foi possível conectar ao provedor. Confira a conexão e as permissões de rede.');
+  };
+
+  const handleLoadAiModels = async () => {
+    const requestId = ++aiModelRequestId.current;
+    const { provider, apiKey } = formData.aiConfig;
+    setIsLoadingAiModels(true);
+    setAiModelStatus({ message: t('Buscando modelos disponíveis para esta chave...'), type: 'info' });
+    try {
+      const models = await listAvailableAiModels(provider, apiKey);
+      if (requestId !== aiModelRequestId.current) return;
+      setAvailableAiModels(models);
+      setModelsLoadedForProvider(provider);
+      setAiModelStatus({
+        message: models.length
+          ? t('Modelos compatíveis carregados. A lista reflete o acesso desta chave.')
+          : t('Nenhum modelo compatível com geração de texto foi encontrado para esta chave.'),
+        type: models.length ? 'success' : 'info',
+      });
+    } catch (error) {
+      if (requestId !== aiModelRequestId.current) return;
+      setAvailableAiModels([]);
+      setModelsLoadedForProvider(null);
+      setAiModelStatus({ message: getAiModelErrorMessage(error), type: 'error' });
+    } finally {
+      if (requestId === aiModelRequestId.current) setIsLoadingAiModels(false);
+    }
+  };
+
+  const handleTestAiModel = async () => {
+    const requestId = ++aiModelRequestId.current;
+    const { provider, apiKey, model } = formData.aiConfig;
+    setIsTestingAiModel(true);
+    setAiModelStatus({ message: t('Testando o modelo com uma solicitação curta...'), type: 'info' });
+    try {
+      await testAiModel(provider, apiKey, model);
+      if (requestId !== aiModelRequestId.current) return;
+      setAiModelStatus({ message: t('Modelo compatível e funcionando com esta chave.'), type: 'success' });
+    } catch (error) {
+      if (requestId !== aiModelRequestId.current) return;
+      setAiModelStatus({ message: getAiModelErrorMessage(error), type: 'error' });
+    } finally {
+      if (requestId === aiModelRequestId.current) setIsTestingAiModel(false);
     }
   };
 
@@ -512,6 +623,32 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
 
         {/* Tab Content Panel */}
         <div className="app-tab-content min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-2.5">
+            <label htmlFor="active-candidate-profile" className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400">
+              <Users className="h-3.5 w-3.5 text-emerald-400" />{t('Perfil ativo')}
+            </label>
+            <select
+              id="active-candidate-profile"
+              value={profileCollection.activeProfileId}
+              onChange={(event) => handleSwitchProfile(event.target.value)}
+              className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs text-zinc-100 outline-none focus:border-emerald-500/60"
+            >
+              {profileCollection.profiles.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.id === 'profile-default' && entry.name === 'Perfil principal' ? t('Perfil principal') : entry.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setProfileManagerOpen(true)}
+              title={t('Gerenciar perfis')}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20"
+            >
+              <Users className="h-3.5 w-3.5" /><span>{t('Perfis')}</span>
+            </button>
+          </div>
+
           {/* TAB 1: DADOS PESSOAIS */}
           {activeTab === 'personal' && (
             <div className="w-full space-y-6 animate-fade-in">
@@ -1362,19 +1499,68 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
 
                       <div>
                         <label className="text-[11px] font-medium text-zinc-400 block mb-1">{t("Modelo Selecionado")}</label>
-                        <input
-                          type="text"
+                        <select
                           value={formData.aiConfig.model}
                           onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              aiConfig: { ...formData.aiConfig, model: e.target.value },
-                            })
+                            {
+                              setFormData({
+                                ...formData,
+                                aiConfig: { ...formData.aiConfig, model: e.target.value },
+                              });
+                              setAiModelStatus(null);
+                            }
                           }
-                          placeholder={t("gemini-1.5-flash ou gpt-4o-mini")}
                           className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-emerald-500 font-mono"
-                        />
+                        >
+                          {!formData.aiConfig.model && <option value="">{t('Carregue a lista e selecione um modelo')}</option>}
+                          {formData.aiConfig.model && !availableAiModels.some((model) => model.id === formData.aiConfig.model) && (
+                            <option value={formData.aiConfig.model}>
+                              {modelsLoadedForProvider === formData.aiConfig.provider
+                                ? `${formData.aiConfig.model} (${t('não listado para esta chave')})`
+                                : `${formData.aiConfig.model} (${t('ainda não verificado')})`}
+                            </option>
+                          )}
+                          {availableAiModels.map((model) => (
+                            <option key={model.id} value={model.id}>
+                              {model.displayName === model.id ? model.id : `${model.displayName} · ${model.id}`}
+                            </option>
+                          ))}
+                        </select>
                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={handleLoadAiModels}
+                          disabled={!formData.aiConfig.apiKey.trim() || isLoadingAiModels || isTestingAiModel}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-2 text-[11px] font-medium text-zinc-200 transition-colors hover:border-emerald-500/50 hover:text-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {isLoadingAiModels ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                          {isLoadingAiModels ? t('Buscando modelos...') : t('Buscar modelos compatíveis')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleTestAiModel}
+                          disabled={!formData.aiConfig.apiKey.trim() || !formData.aiConfig.model.trim() || isLoadingAiModels || isTestingAiModel}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2 text-[11px] font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {isTestingAiModel ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                          {isTestingAiModel ? t('Testando...') : t('Testar compatibilidade')}
+                        </button>
+                      </div>
+                      <p className="text-[10px] leading-relaxed text-zinc-500">
+                        {t('A busca usa sua chave para listar modelos acessíveis. O teste envia uma solicitação curta ao modelo selecionado e pode gerar cobrança do provedor.')}
+                      </p>
+                      {!formData.aiConfig.apiKey.trim() && (
+                        <p className="text-[10px] text-amber-300/80">{t('Informe a chave de API antes de buscar modelos.')}</p>
+                      )}
+                      {aiModelStatus && (
+                        <p role="status" aria-live="polite" className={`text-[10px] leading-relaxed ${aiModelStatus.type === 'success' ? 'text-emerald-300' : aiModelStatus.type === 'error' ? 'text-rose-300' : 'text-zinc-400'}`}>
+                          {aiModelStatus.message}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -1478,7 +1664,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                               } else {
                                 document.documentElement.classList.add('dark');
                               }
-                              onSave(updated);
+                              onSave(updated, profileId);
                             }}
                             className={`p-3 rounded-xl border text-left transition-all relative ${
                               isSelected
@@ -1545,7 +1731,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
                     </div>
 
                     <p className="text-xs text-zinc-300 leading-relaxed">
-                      {t("O backup inclui seu perfil, respostas salvas e o currículo anexado, mas remove a chave de API. Guarde o arquivo em um local privado.")}
+                      {t("O backup inclui todos os perfis, respostas salvas e currículos anexados, mas remove as chaves de API. Guarde o arquivo em um local privado.")}
                     </p>
 
                     <div className="flex flex-wrap gap-3">
@@ -1593,7 +1779,24 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
         currentProfile={formData}
         aiConfig={formData.aiConfig}
         onImport={handleImportProfile}
+        onImportCollection={async (collection) => {
+          await onImportProfileCollection(collection);
+          setCvImporterOpen(false);
+          setSaveSuccess(true);
+          setTimeout(() => setSaveSuccess(false), 2500);
+        }}
         onOpenSettings={() => setActiveTab('settings')}
+      />
+
+      <ProfileManagerModal
+        isOpen={profileManagerOpen}
+        collection={profileCollection}
+        onClose={() => setProfileManagerOpen(false)}
+        onSave={onSaveProfileCollection}
+        onOpenSettings={() => {
+          setProfileManagerOpen(false);
+          setActiveTab('settings');
+        }}
       />
     </div>
   );

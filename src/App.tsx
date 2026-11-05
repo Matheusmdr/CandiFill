@@ -1,13 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { CandidateProfile } from './types/profile';
-import { loadCandidateProfile, saveCandidateProfile, onProfileUpdated, DEFAULT_PROFILE } from './services/storage';
+import { CandidateProfile, CandidateProfileCollection } from './types/profile';
+import {
+  loadCandidateProfileCollection,
+  saveCandidateProfile,
+  saveCandidateProfileCollection,
+  onCandidateProfileCollectionUpdated,
+  DEFAULT_PROFILE,
+} from './services/storage';
 import { SpotlightOverlay } from './components/SpotlightOverlay';
 import { VaultManager } from './components/VaultManager';
 import { useLocale } from './contexts/LocaleContext';
 
 export const App: React.FC = () => {
   const { t, tp } = useLocale();
-  const [profile, setProfile] = useState<CandidateProfile>(DEFAULT_PROFILE);
+  const [profileCollection, setProfileCollection] = useState<CandidateProfileCollection>({
+    schemaVersion: 1,
+    activeProfileId: 'profile-default',
+    profiles: [{
+      id: 'profile-default',
+      name: 'Perfil principal',
+      targetRole: '',
+      description: '',
+      createdAt: '',
+      profile: DEFAULT_PROFILE,
+    }],
+  });
+  const profile = profileCollection.profiles.find((entry) => entry.id === profileCollection.activeProfileId)?.profile || DEFAULT_PROFILE;
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showSpotlight, setShowSpotlight] = useState<boolean>(false);
@@ -20,9 +38,9 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     // Carrega dados iniciais do candidato
-    loadCandidateProfile()
-      .then((data) => {
-        setProfile(data);
+    loadCandidateProfileCollection()
+      .then((collection) => {
+        setProfileCollection(collection);
         setIsLoading(false);
       })
       .catch((error: unknown) => {
@@ -31,8 +49,8 @@ export const App: React.FC = () => {
       });
 
     // Ouve atualizações de dados em tempo real (mudanças vindas de outras abas ou storage da extensão)
-    const unsubscribe = onProfileUpdated((updatedProfile) => {
-      setProfile(updatedProfile);
+    const unsubscribe = onCandidateProfileCollectionUpdated((updatedCollection) => {
+      setProfileCollection(updatedCollection);
     });
 
     return () => {
@@ -51,9 +69,18 @@ export const App: React.FC = () => {
     }
   }, [profile.theme]);
 
-  const handleSaveProfile = async (updated: CandidateProfile) => {
-    await saveCandidateProfile(updated);
-    setProfile(updated);
+  const handleSaveProfile = async (updated: CandidateProfile, profileId?: string) => {
+    await saveCandidateProfile(updated, profileId);
+  };
+
+  const handleSaveProfileCollection = async (updated: CandidateProfileCollection, sharedSourceId?: string) => {
+    const saved = await saveCandidateProfileCollection(updated, sharedSourceId);
+    setProfileCollection(saved);
+  };
+
+  const handleImportProfileCollection = async (updated: CandidateProfileCollection) => {
+    const saved = await saveCandidateProfileCollection(updated, updated.activeProfileId);
+    setProfileCollection(saved);
   };
 
   const handleAutofillActiveTab = async () => {
@@ -171,7 +198,11 @@ export const App: React.FC = () => {
       {/* Interface Principal do Cofre */}
       <VaultManager
         profile={profile}
+        profileId={profileCollection.activeProfileId}
+        profileCollection={profileCollection}
         onSave={handleSaveProfile}
+        onSaveProfileCollection={handleSaveProfileCollection}
+        onImportProfileCollection={handleImportProfileCollection}
         onOpenSpotlight={() => setShowSpotlight(true)}
         onAutofillPage={handleAutofillActiveTab}
       />

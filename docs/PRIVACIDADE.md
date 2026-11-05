@@ -6,13 +6,13 @@ Esta política descreve o tratamento de dados na versão inicial do CandiFill. E
 
 ## Dados armazenados no navegador
 
-O CandiFill guarda no armazenamento local da extensão os dados que você insere ou importa para o cofre, como informações de contato, experiência profissional, formação, respostas reutilizáveis, currículo e a chave de API que você configurou. Esse perfil não é enviado a um servidor do CandiFill.
+O CandiFill guarda no armazenamento local da extensão os dados que você insere ou importa para o cofre. Você pode manter vários perfis de candidatura. Contato, formação, configurações de IA e tema são compartilhados entre eles; resumos, experiência profissional, pretensões salariais, campos personalizados, respostas salvas e currículos pertencem a cada perfil. O cofre também guarda a chave de API configurada. Os perfis não são enviados a um servidor do CandiFill.
 
 A preferência de idioma da interface também é salva localmente na extensão.
 
 Quando um campo compatível estava vazio e você digita uma resposta elegível, a extensão pode criar uma sugestão para revisão. Para manter a sugestão disponível depois de uma navegação do formulário, ela fica temporariamente na sessão da extensão, associada à aba e ao domínio, por até 15 minutos. A sugestão só é gravada no perfil depois que você seleciona **Salvar**. Descartar a revisão remove a sugestão. O filtro automático pode não reconhecer todas as informações sensíveis; revise cada pergunta e resposta antes de salvar.
 
-O backup JSON é gerado localmente para você baixar. Ele pode conter o perfil, as respostas salvas e o currículo anexado, mas omite a chave de API.
+O backup JSON é gerado localmente para você baixar. Ele pode conter todos os perfis, respostas salvas e currículos anexados, mas omite as chaves de API.
 
 ## Dados enviados a provedores de IA
 
@@ -20,6 +20,10 @@ O CandiFill não tem um servidor próprio de IA. Se você configurar uma chave e
 
 - **Google Gemini:** texto do currículo durante a extração, ou o texto profissional selecionado para refinamento.
 - **OpenAI:** texto do currículo durante a extração, ou o texto profissional selecionado para refinamento.
+
+Ao criar um perfil adaptado a uma vaga, o CandiFill envia ao provedor selecionado a descrição da vaga, o cargo desejado, o título profissional, os resumos e o histórico de experiência do perfil ativo. Essa solicitação não inclui contato, formação, respostas salvas nem o currículo anexado. O resultado aparece como rascunho editável para revisão antes de salvar.
+
+Quando você pede para buscar modelos disponíveis, o CandiFill envia sua chave de API ao provedor selecionado para consultar os modelos acessíveis por ela; essa consulta não inclui texto do perfil nem da candidatura. Ao selecionar **Testar compatibilidade**, o CandiFill envia uma solicitação curta ao modelo. O provedor pode contabilizar esse uso ou cobrar pela solicitação.
 
 O provedor também recebe a chave de API necessária para autenticar a solicitação. A extensão não envia esses textos aos provedores enquanto você não aciona o recurso de IA. O tratamento posterior é regido pelos termos e pela política de privacidade do provedor escolhido.
 
