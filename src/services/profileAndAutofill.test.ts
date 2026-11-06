@@ -30,6 +30,32 @@ describe('autofillCurrentPage', () => {
     vi.unstubAllGlobals();
   });
 
+  it('previews ATS-style fields without changing values and fills only selected matches', () => {
+    document.body.innerHTML = `
+      <form>
+        <label for="first_name">First Name</label><input id="first_name" name="first_name">
+        <label for="email">Email</label><input id="email" name="email" type="email">
+        <label for="phone">Phone Number</label><input id="phone" name="phone" type="tel">
+      </form>`;
+    const profile = normalizeCandidateProfile({
+      ...DEFAULT_PROFILE,
+      personal: { ...DEFAULT_PROFILE.personal, fullName: 'Ana Souza', email: 'ana@example.com', phone: '+55 11 99999-9999' },
+    });
+
+    const preview = autofillCurrentPage(profile, true);
+    expect(preview.fillableFields.map((field) => field.label)).toEqual(['Nome Completo', 'E-mail', 'Telefone / WhatsApp']);
+    expect((document.querySelector('#first_name') as HTMLInputElement).value).toBe('');
+    expect((document.querySelector('#email') as HTMLInputElement).value).toBe('');
+    expect((document.querySelector('#phone') as HTMLInputElement).value).toBe('');
+
+    const emailField = preview.fillableFields.find((field) => field.label === 'E-mail')!;
+    const result = autofillCurrentPage(profile, false, [emailField.id]);
+    expect((document.querySelector('#first_name') as HTMLInputElement).value).toBe('');
+    expect((document.querySelector('#email') as HTMLInputElement).value).toBe('ana@example.com');
+    expect((document.querySelector('#phone') as HTMLInputElement).value).toBe('');
+    expect(result.totalFilled).toBe(1);
+  });
+
   it('preenche campos compatíveis e preserva valores que a pessoa já digitou', () => {
     document.body.innerHTML = `
       <form>

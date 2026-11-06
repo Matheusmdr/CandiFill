@@ -10,6 +10,7 @@ import {
 import { SpotlightOverlay } from './components/SpotlightOverlay';
 import { VaultManager } from './components/VaultManager';
 import { useLocale } from './contexts/LocaleContext';
+import { AutofillPreview, AutofillReviewModal } from './components/AutofillReviewModal';
 
 export const App: React.FC = () => {
   const { t, tp } = useLocale();
@@ -30,6 +31,9 @@ export const App: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showSpotlight, setShowSpotlight] = useState<boolean>(false);
   const [statusNotification, setStatusNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+  const [autofillPreview, setAutofillPreview] = useState<AutofillPreview | null>(null);
+  const [previewSite, setPreviewSite] = useState('');
+  const [previewTabId, setPreviewTabId] = useState<number | null>(null);
 
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
     setStatusNotification({ message, type });
@@ -84,9 +88,51 @@ export const App: React.FC = () => {
   };
 
   const handleAutofillActiveTab = async () => {
+    if (typeof chrome === 'undefined' || !chrome.tabs?.query) {
+      showToast(t('⚡ Modo Web: Abra como extensão para preencher páginas.'), 'info');
+      return;
+    }
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.id) {
+        showToast(t('Nenhuma aba ativa encontrada.'), 'error');
+        return;
+      }
+      if (tab.url && /^(about:|chrome:|chrome-extension:|moz-extension:|edge:|brave:|opera:|vivaldi:)/i.test(tab.url)) {
+        showToast(t('O navegador bloqueia o preenchimento em páginas internas. Abra uma página de candidatura.'), 'info');
+        return;
+      }
+      const safeProfile: CandidateProfile = { ...profile, aiConfig: { ...profile.aiConfig, apiKey: '' } };
+      const preview = () => chrome.tabs.sendMessage(tab.id!, { action: 'AUTOFILL_PREVIEW', profile: safeProfile }, (result) => {
+        if (chrome.runtime.lastError) {
+          chrome.scripting?.executeScript({ target: { tabId: tab.id! }, files: ['content.js'] }, () => {
+            if (chrome.runtime.lastError) {
+              showToast(t('Esta página protege o acesso a extensões.'), 'info');
+              return;
+            }
+            preview();
+          });
+          return;
+        }
+        if (!result || result.totalFilled === undefined) {
+          showToast(t('Não foi possível analisar os campos desta página.'), 'error');
+          return;
+        }
+        setPreviewTabId(tab.id!);
+        setPreviewSite(tab.url ? new URL(tab.url).hostname : t('Página ativa'));
+        setAutofillPreview(result as AutofillPreview);
+      });
+      preview();
+    } catch (error) {
+      showToast(t('Erro ao analisar a página: ') + (error instanceof Error ? error.message : String(error)), 'error');
+    }
+  };
+
+  const performAutofill = async (selectedFieldIds: string[]) => {
     if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
       try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const tab = previewTabId !== null && chrome.tabs.get ? await chrome.tabs.get(previewTabId) : activeTab;
         if (!tab || !tab.id) {
           showToast(t('Nenhuma aba ativa encontrada.'), 'error');
           return;
@@ -106,7 +152,7 @@ export const App: React.FC = () => {
         // Tenta enviar mensagem para o content script da aba
         chrome.tabs.sendMessage(
           tab.id,
-          { action: 'AUTOFILL', profile: sanitizedProfile },
+          { action: 'AUTOFILL', profile: sanitizedProfile, selectedFieldIds },
           (response) => {
             if (chrome.runtime.lastError) {
               // Se o content script não estava pré-carregado nesta página
@@ -119,8 +165,15 @@ export const App: React.FC = () => {
                   if (chrome.runtime.lastError) {
                     showToast(t('Esta página protege o acesso a extensões.'), 'info');
                   } else {
-                    chrome.tabs.sendMessage(tab.id!, { action: 'AUTOFILL', profile: sanitizedProfile });
-                    showToast(t('CandiFill disparado na aba ativa!'), 'success');
+                    chrome.tabs.sendMessage(tab.id!, { action: 'AUTOFILL', profile: sanitizedProfile, selectedFieldIds }, (retryResponse) => {
+                      if (chrome.runtime.lastError) {
+                        showToast(t('Não foi possível preencher esta página. Tente novamente.'), 'error');
+                      } else if (retryResponse?.totalFilled > 0) {
+                        showToast(tp('✅ {count} campo preenchido.', '✅ {count} campos preenchidos.', retryResponse.totalFilled), 'success');
+                      } else {
+                        showToast(t('Nenhum campo compatível foi preenchido. Você pode completar o formulário e revisar respostas novas.'), 'info');
+                      }
+                    });
                   }
                 }
               );
@@ -206,6 +259,22 @@ export const App: React.FC = () => {
         onOpenSpotlight={() => setShowSpotlight(true)}
         onAutofillPage={handleAutofillActiveTab}
       />
+
+      {autofillPreview && (
+        <AutofillReviewModal
+          preview={autofillPreview}
+          site={previewSite}
+          onContinue={(selectedFieldIds) => { setAutofillPreview(null); void performAutofill(selectedFieldIds); }}
+          onClose={() => { setAutofillPreview(null); setPreviewTabId(null); }}
+          onReport={() => {
+            const title = encodeURIComponent('Compatibility issue: job application form');
+            const body = encodeURIComponent('Browser and version:\nJob application site (optional):\nWhat happened?\n\nPlease do not include resumes, API keys, form answers, or other personal information.');
+            const url = `https://github.com/Matheusmdr/CandiFill/issues/new?title=${title}&body=${body}`;
+            if (typeof chrome !== 'undefined' && chrome.tabs?.create) chrome.tabs.create({ url });
+            else window.open(url, '_blank', 'noopener,noreferrer');
+          }}
+        />
+      )}
 
       {/* Spotlight HUD Modal / Busca Rápida Raycast */}
       {showSpotlight && (

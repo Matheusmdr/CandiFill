@@ -451,6 +451,22 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
     }));
   };
 
+  const activeEntry = profileCollection.profiles.find((entry) => entry.id === profileId);
+  const setupItems = [
+    { label: t('Adicione seu nome e e-mail'), done: Boolean(formData.personal.fullName.trim() && formData.personal.email.trim()), tab: 'personal' as TabType },
+    { label: t('Escreva um resumo profissional'), done: Boolean(formData.summary.shortSummary.trim() || formData.summary.longSummary.trim()), tab: 'summaries' as TabType },
+    { label: t('Cadastre ao menos uma experiência'), done: formData.experience.some((item) => item.role.trim() || item.company.trim()), tab: 'experience' as TabType },
+    { label: t('Anexe seu currículo em PDF'), done: Boolean(formData.resumeFile), tab: 'personal' as TabType },
+  ];
+  const setupDone = setupItems.filter((item) => item.done).length;
+  const vacancyGaps = [
+    !formData.personal.fullName.trim() && t('Nome completo'),
+    !formData.personal.email.trim() && t('E-mail'),
+    !formData.summary.shortSummary.trim() && !formData.summary.longSummary.trim() && t('Resumo profissional'),
+    formData.experience.length === 0 && t('Experiência profissional'),
+    !formData.resumeFile && t('Currículo em PDF'),
+  ].filter((item): item is string => Boolean(item));
+
   return (
     <div className="w-full h-full min-h-0 min-w-0 flex flex-col bg-app-ambient text-zinc-100 overflow-hidden">
       {/* Top Bar / App Header */}
@@ -626,6 +642,33 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
 
         {/* Tab Content Panel */}
         <div className="app-tab-content min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <section className="mb-4 grid gap-3 xl:grid-cols-2" aria-label={t('Preparação do perfil')}>
+            <div className="rounded-xl border border-emerald-800/50 bg-emerald-950/20 p-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xs font-semibold text-emerald-100">{t('Prepare seu perfil')}</h2>
+                  <p className="mt-0.5 text-[10px] text-zinc-400">{t('{done} de {total} itens básicos concluídos', { done: setupDone, total: setupItems.length })}</p>
+                </div>
+                <span className="text-xs font-semibold text-emerald-300">{Math.round(setupDone / setupItems.length * 100)}%</span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800"><div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${setupDone / setupItems.length * 100}%` }} /></div>
+              {setupDone < setupItems.length && <div className="mt-2 flex flex-wrap gap-1.5">{setupItems.filter((item) => !item.done).map((item) => <button key={item.label} type="button" onClick={() => setActiveTab(item.tab)} className="rounded-md border border-zinc-700 bg-zinc-900/70 px-2 py-1 text-[10px] text-zinc-300 hover:border-emerald-600/70">＋ {item.label}</button>)}</div>}
+              {setupDone === setupItems.length && <p className="mt-2 text-[10px] text-emerald-200">{t('Seu perfil já tem uma boa base para começar.')}</p>}
+            </div>
+
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3.5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-xs font-semibold text-zinc-100">{t('Revisão para esta vaga')}</h2>
+                  <p className="mt-0.5 text-[10px] text-zinc-400">{activeEntry?.targetRole.trim() || t('Defina o cargo no perfil ativo para dar contexto a esta revisão.')}</p>
+                </div>
+                <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-medium ${vacancyGaps.length ? 'bg-amber-950/60 text-amber-200' : 'bg-emerald-950/60 text-emerald-200'}`}>{vacancyGaps.length ? t('{count} itens para revisar', { count: vacancyGaps.length }) : t('Perfil completo')}</span>
+              </div>
+              {vacancyGaps.length ? <p className="mt-2 text-[10px] leading-relaxed text-zinc-400">{t('Antes de se candidatar, confira:')} {vacancyGaps.join(', ')}.</p> : <p className="mt-2 text-[10px] text-zinc-400">{t('Os dados básicos estão presentes. Revise cada resposta no site antes de enviar.')}</p>}
+              <p className="mt-1.5 text-[9px] text-zinc-500">{t('Esta checagem usa apenas os dados do perfil selecionado; ela não avalia os requisitos da vaga.')}</p>
+            </div>
+          </section>
+
           <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-2.5">
             <label htmlFor="active-candidate-profile" className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400">
               <Users className="h-3.5 w-3.5 text-emerald-400" />{t('Perfil ativo')}

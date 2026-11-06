@@ -430,7 +430,7 @@ function showFloatingToast(message: string, isSuccess = true) {
 /**
  * Executa o preenchimento automático
  */
-async function triggerAutofill(customProfile?: CandidateProfile) {
+async function triggerAutofill(customProfile?: CandidateProfile, selectedFieldIds?: string[]) {
   try {
     const profile = customProfile || (await loadCandidateProfile({ allowLocalStorageFallback: false, includeApiKey: false }));
     const hasProfileData = [
@@ -447,7 +447,7 @@ async function triggerAutofill(customProfile?: CandidateProfile) {
     if (!hasProfileData) {
       armAnswerCapture();
       showFloatingToast(t('Seu perfil ainda está vazio. Preencha o formulário e revise respostas novas para salvá-las.'), false);
-      return { totalFilled: 0, fieldsFilled: [], fieldsSkipped: [] };
+      return { totalFilled: 0, fieldsFilled: [], fillableFields: [], fieldsSkipped: [], fieldsSkippedCount: 0, fieldsDetected: 0 };
     }
 
     // Nunca disponibiliza a chave de IA para a lógica executada na página.
@@ -455,7 +455,7 @@ async function triggerAutofill(customProfile?: CandidateProfile) {
       ...profile,
       aiConfig: { ...profile.aiConfig, apiKey: '' },
     };
-    const result = autofillCurrentPage(safeProfile);
+    const result = autofillCurrentPage(safeProfile, false, selectedFieldIds);
     armAnswerCapture();
 
     if (result.totalFilled > 0) {
@@ -476,7 +476,7 @@ async function triggerAutofill(customProfile?: CandidateProfile) {
     return result;
   } catch {
     showFloatingToast(t('Não foi possível acessar o perfil da extensão. Abra o cofre e tente novamente.'), false);
-    return { totalFilled: 0, fieldsFilled: [], fieldsSkipped: [] };
+    return { totalFilled: 0, fieldsFilled: [], fillableFields: [], fieldsSkipped: [], fieldsSkippedCount: 0, fieldsDetected: 0 };
   }
 }
 
@@ -667,8 +667,18 @@ function shouldSuggestAutofill(): boolean {
 // 1. Ouve mensagens da extensão (popup, atalho ou background)
 if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message.action === 'AUTOFILL_PREVIEW') {
+      const profile = message.profile as CandidateProfile;
+      const safeProfile: CandidateProfile = {
+        ...profile,
+        aiConfig: { ...profile.aiConfig, apiKey: '' },
+      };
+      sendResponse(autofillCurrentPage(safeProfile, true));
+      return false;
+    }
+
     if (message.action === 'AUTOFILL') {
-      triggerAutofill(message.profile).then((result) => {
+      triggerAutofill(message.profile, Array.isArray(message.selectedFieldIds) ? message.selectedFieldIds : undefined).then((result) => {
         sendResponse(result);
       });
       return true; // mantém canal aberto para resposta assíncrona

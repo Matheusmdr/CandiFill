@@ -31,14 +31,17 @@ function applyGlowEffect(element: HTMLElement) {
  */
 function setNativeValue(
   element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement,
-  value: string
+  value: string,
+  dryRun = false
 ): boolean {
   if (!element || value === undefined || value === null) return false;
 
   // Se for um <select>, redireciona para a rotina especializada
   if (element.tagName === 'SELECT') {
-    return setSelectValue(element as HTMLSelectElement, value);
+    return setSelectValue(element as HTMLSelectElement, value, dryRun);
   }
+
+  if (dryRun) return true;
 
   try {
     element.focus();
@@ -70,7 +73,7 @@ function setNativeValue(
 /**
  * Seleciona a melhor opção dentro de um elemento <select> com base em texto ou valor
  */
-export function setSelectValue(select: HTMLSelectElement, target: string | string[]): boolean {
+export function setSelectValue(select: HTMLSelectElement, target: string | string[], dryRun = false): boolean {
   if (!select || !select.options || select.options.length === 0) return false;
 
   const rawTargets = Array.isArray(target) ? target : [target];
@@ -128,6 +131,7 @@ export function setSelectValue(select: HTMLSelectElement, target: string | strin
   }
 
   if (bestIndex >= 0) {
+    if (dryRun) return true;
     try {
       select.focus();
       select.selectedIndex = bestIndex;
@@ -160,9 +164,10 @@ export function setSelectValue(select: HTMLSelectElement, target: string | strin
 /**
  * Preenche botões de rádio ou opções de checkbox
  */
-function setRadioOrSelect(element: HTMLInputElement, shouldCheck: boolean): boolean {
+function setRadioOrSelect(element: HTMLInputElement, shouldCheck: boolean, dryRun = false): boolean {
   if (element.type === 'radio' || element.type === 'checkbox') {
     if (shouldCheck && !element.checked) {
+      if (dryRun) return true;
       element.checked = true;
       element.dispatchEvent(new Event('change', { bubbles: true }));
       element.dispatchEvent(new Event('click', { bubbles: true }));
@@ -213,7 +218,10 @@ function attachResumeFile(fileInput: HTMLInputElement, resumeFile: ResumeFile): 
 export interface AutofillResult {
   totalFilled: number;
   fieldsFilled: string[];
+  fillableFields: Array<{ id: string; label: string }>;
   fieldsSkipped: string[];
+  fieldsSkippedCount: number;
+  fieldsDetected: number;
 }
 
 function escapeRegExp(value: string): string {
@@ -239,7 +247,7 @@ function isUnconfirmedDefault(profile: CandidateProfile, key: string): boolean {
 /**
  * Varre o DOM da página atual e preenche automaticamente todos os campos compatíveis
  */
-export function autofillCurrentPage(profile: CandidateProfile): AutofillResult {
+export function autofillCurrentPage(profile: CandidateProfile, dryRun = false, selectedFieldIds?: string[]): AutofillResult {
   const elements = Array.from(
     document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
       'input, textarea, select'
@@ -247,10 +255,20 @@ export function autofillCurrentPage(profile: CandidateProfile): AutofillResult {
   );
 
   let totalFilled = 0;
+  let fieldsDetected = 0;
+  let fieldsSkippedCount = 0;
   const fieldsFilled: string[] = [];
+  const fillableFields: Array<{ id: string; label: string }> = [];
   const fieldsSkipped: string[] = [];
+  const recordFilled = (id: string, label: string) => {
+    totalFilled++;
+    fieldsFilled.push(label);
+    fillableFields.push({ id, label });
+  };
 
-  elements.forEach((el) => {
+  elements.forEach((el, index) => {
+    const fieldId = `field-${index}`;
+    if (selectedFieldIds && !selectedFieldIds.includes(fieldId)) return;
     const input = el as HTMLInputElement;
     const fieldLabel = el.labels?.[0]?.textContent?.trim() ||
       el.getAttribute('aria-label') ||
@@ -268,12 +286,14 @@ export function autofillCurrentPage(profile: CandidateProfile): AutofillResult {
     ) {
       return;
     }
+    if (el.type !== 'hidden' && el.type !== 'submit' && el.type !== 'button' && el.type !== 'reset') fieldsDetected++;
 
     if (el instanceof HTMLInputElement && el.type === 'radio' && el.name) {
       const groupAlreadyAnswered = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="radio"]'))
         .some((radio) => radio.form === el.form && radio.name === el.name && radio.checked);
       if (groupAlreadyAnswered) {
         fieldsSkipped.push(fieldLabel);
+        fieldsSkippedCount++;
         return;
       }
     }
@@ -283,14 +303,17 @@ export function autofillCurrentPage(profile: CandidateProfile): AutofillResult {
       if (el instanceof HTMLSelectElement) {
         if (currentValue && currentValue !== '0' && currentValue !== '-1') {
           fieldsSkipped.push(fieldLabel);
+          fieldsSkippedCount++;
           return;
         }
       } else if (currentValue.trim()) {
         fieldsSkipped.push(fieldLabel);
+        fieldsSkippedCount++;
         return;
       }
     } else if (input.files?.length) {
       fieldsSkipped.push(fieldLabel);
+      fieldsSkippedCount++;
       return;
     }
 
@@ -314,9 +337,12 @@ export function autofillCurrentPage(profile: CandidateProfile): AutofillResult {
         /curriculo|curr[ií]culo|resume|cv|upload|anexar|anexo|arquivo|document|ficheiro/i.test(tag) ||
         accept.includes('pdf');
       if (isResumeRelated) {
+        if (dryRun) {
+          recordFilled(fieldId, `Currículo Anexado (${profile.resumeFile.name})`);
+          return;
+        }
         if (attachResumeFile(el as HTMLInputElement, profile.resumeFile)) {
-          totalFilled++;
-          fieldsFilled.push(`Currículo Anexado (${profile.resumeFile.name})`);
+          recordFilled(fieldId, `Currículo Anexado (${profile.resumeFile.name})`);
           return;
         }
       }
@@ -344,36 +370,32 @@ export function autofillCurrentPage(profile: CandidateProfile): AutofillResult {
 
     // 1. Nome Completo / First Name
     if (/nome|full.?name|first.?name|candidat/i.test(tag) && !/empresa|company|cargo|role/i.test(tag)) {
-      if (profile.personal.fullName && setNativeValue(el, profile.personal.fullName)) {
-        totalFilled++;
-        fieldsFilled.push('Nome Completo');
+      if (profile.personal.fullName && setNativeValue(el, profile.personal.fullName, dryRun)) {
+        recordFilled(fieldId, 'Nome Completo');
         return;
       }
     }
 
     // 2. E-mail
     if (/e.?mail|best.?email/i.test(tag) && !/empresa|company/i.test(tag)) {
-      if (profile.personal.email && setNativeValue(el, profile.personal.email)) {
-        totalFilled++;
-        fieldsFilled.push('E-mail');
+      if (profile.personal.email && setNativeValue(el, profile.personal.email, dryRun)) {
+        recordFilled(fieldId, 'E-mail');
         return;
       }
     }
 
     // 3. Telefone / Celular / WhatsApp
     if (/telefone|celular|phone|whatsapp|mobile/i.test(tag)) {
-      if (profile.personal.phone && setNativeValue(el, profile.personal.phone)) {
-        totalFilled++;
-        fieldsFilled.push('Telefone / WhatsApp');
+      if (profile.personal.phone && setNativeValue(el, profile.personal.phone, dryRun)) {
+        recordFilled(fieldId, 'Telefone / WhatsApp');
         return;
       }
     }
 
     // 4. Localização / Cidade / Endereço
     if (/cidade|city|endereço|localiza|address|location/i.test(tag) && !/empresa|company/i.test(tag)) {
-      if (profile.personal.location && setNativeValue(el, profile.personal.location)) {
-        totalFilled++;
-        fieldsFilled.push('Localização');
+      if (profile.personal.location && setNativeValue(el, profile.personal.location, dryRun)) {
+        recordFilled(fieldId, 'Localização');
         return;
       }
     }
@@ -383,15 +405,13 @@ export function autofillCurrentPage(profile: CandidateProfile): AutofillResult {
       const nat = profile.personal.nationality;
       if (!nat || isUnconfirmedDefault(profile, 'personal.nationality')) return;
       if (el.tagName === 'SELECT') {
-        if (setSelectValue(el as HTMLSelectElement, nat)) {
-          totalFilled++;
-          fieldsFilled.push('Nacionalidade');
+        if (setSelectValue(el as HTMLSelectElement, nat, dryRun)) {
+          recordFilled(fieldId, 'Nacionalidade');
           return;
         }
       } else {
-        if (setNativeValue(el, nat)) {
-          totalFilled++;
-          fieldsFilled.push('Nacionalidade');
+        if (setNativeValue(el, nat, dryRun)) {
+          recordFilled(fieldId, 'Nacionalidade');
           return;
         }
       }
@@ -399,36 +419,32 @@ export function autofillCurrentPage(profile: CandidateProfile): AutofillResult {
 
     // 6. LinkedIn
     if (/linkedin/i.test(tag)) {
-      if (profile.personal.linkedin && setNativeValue(el, profile.personal.linkedin)) {
-        totalFilled++;
-        fieldsFilled.push('LinkedIn');
+      if (profile.personal.linkedin && setNativeValue(el, profile.personal.linkedin, dryRun)) {
+        recordFilled(fieldId, 'LinkedIn');
         return;
       }
     }
 
     // 7. GitHub
     if (/github/i.test(tag)) {
-      if (profile.personal.github && setNativeValue(el, profile.personal.github)) {
-        totalFilled++;
-        fieldsFilled.push('GitHub');
+      if (profile.personal.github && setNativeValue(el, profile.personal.github, dryRun)) {
+        recordFilled(fieldId, 'GitHub');
         return;
       }
     }
 
     // 8. Portfólio / Site Pessoal
     if (/portf|site|website|homepage/i.test(tag) && !/linkedin|github/i.test(tag)) {
-      if (profile.personal.portfolio && setNativeValue(el, profile.personal.portfolio)) {
-        totalFilled++;
-        fieldsFilled.push('Portfólio / Site');
+      if (profile.personal.portfolio && setNativeValue(el, profile.personal.portfolio, dryRun)) {
+        recordFilled(fieldId, 'Portfólio / Site');
         return;
       }
     }
 
     // 9. Pretensão Salarial / Expectation
     if (/sal[aá]ri|pretens|desired.?salary|expectation/i.test(tag)) {
-      if (profile.salary.desiredSalary && setNativeValue(el, profile.salary.desiredSalary)) {
-        totalFilled++;
-        fieldsFilled.push('Pretensão Salarial');
+      if (profile.salary.desiredSalary && setNativeValue(el, profile.salary.desiredSalary, dryRun)) {
+        recordFilled(fieldId, 'Pretensão Salarial');
         return;
       }
     }
@@ -439,23 +455,20 @@ export function autofillCurrentPage(profile: CandidateProfile): AutofillResult {
       if (!pref || isUnconfirmedDefault(profile, 'salary.contractType')) return;
       if (pref.includes('pj') && pref.includes('clt')) return;
       if (el.tagName === 'SELECT') {
-        if (setSelectValue(el as HTMLSelectElement, pref)) {
-          totalFilled++;
-          fieldsFilled.push('Modelo de Contratação');
+        if (setSelectValue(el as HTMLSelectElement, pref, dryRun)) {
+          recordFilled(fieldId, 'Modelo de Contratação');
           return;
         }
       } else if (el.type === 'radio') {
         const radioVal = ((el.value || '') + ' ' + tag).toLowerCase();
         if ((pref.includes('pj') || pref.includes('contractor')) && (radioVal.includes('pj') || radioVal.includes('contractor'))) {
-          if (setRadioOrSelect(el as HTMLInputElement, true)) {
-            totalFilled++;
-            fieldsFilled.push('Modelo de Contratação (PJ)');
+          if (setRadioOrSelect(el as HTMLInputElement, true, dryRun)) {
+            recordFilled(fieldId, 'Modelo de Contratação (PJ)');
             return;
           }
         } else if ((pref.includes('clt') || pref.includes('employee')) && (radioVal.includes('clt') || radioVal.includes('employee'))) {
-          if (setRadioOrSelect(el as HTMLInputElement, true)) {
-            totalFilled++;
-            fieldsFilled.push('Modelo de Contratação (CLT)');
+          if (setRadioOrSelect(el as HTMLInputElement, true, dryRun)) {
+            recordFilled(fieldId, 'Modelo de Contratação (CLT)');
             return;
           }
         }
@@ -467,15 +480,13 @@ export function autofillCurrentPage(profile: CandidateProfile): AutofillResult {
       const degree = profile.education[0]?.degree;
       if (!degree) return;
       if (el.tagName === 'SELECT') {
-        if (setSelectValue(el as HTMLSelectElement, degree)) {
-          totalFilled++;
-          fieldsFilled.push('Grau de Formação');
+        if (setSelectValue(el as HTMLSelectElement, degree, dryRun)) {
+          recordFilled(fieldId, 'Grau de Formação');
           return;
         }
       } else {
-        if (setNativeValue(el, degree)) {
-          totalFilled++;
-          fieldsFilled.push('Grau de Formação');
+        if (setNativeValue(el, degree, dryRun)) {
+          recordFilled(fieldId, 'Grau de Formação');
           return;
         }
       }
@@ -486,15 +497,13 @@ export function autofillCurrentPage(profile: CandidateProfile): AutofillResult {
       const avail = profile.salary.availability;
       if (!avail || isUnconfirmedDefault(profile, 'salary.availability')) return;
       if (el.tagName === 'SELECT') {
-        if (setSelectValue(el as HTMLSelectElement, avail)) {
-          totalFilled++;
-          fieldsFilled.push('Disponibilidade');
+        if (setSelectValue(el as HTMLSelectElement, avail, dryRun)) {
+          recordFilled(fieldId, 'Disponibilidade');
           return;
         }
       } else {
-        if (setNativeValue(el, avail)) {
-          totalFilled++;
-          fieldsFilled.push('Disponibilidade');
+        if (setNativeValue(el, avail, dryRun)) {
+          recordFilled(fieldId, 'Disponibilidade');
           return;
         }
       }
@@ -503,9 +512,8 @@ export function autofillCurrentPage(profile: CandidateProfile): AutofillResult {
     // 13. Resumo / Bio / Pitch / Summary (geralmente em TEXTAREA)
     if (/sobre|resumo|bio|pitch|summary|apresenta/i.test(tag) && el.tagName === 'TEXTAREA') {
       const summaryText = profile.summary.shortSummary || profile.summary.longSummary;
-      if (summaryText && setNativeValue(el, summaryText)) {
-        totalFilled++;
-        fieldsFilled.push('Resumo Profissional');
+      if (summaryText && setNativeValue(el, summaryText, dryRun)) {
+        recordFilled(fieldId, 'Resumo Profissional');
         return;
       }
     }
@@ -513,9 +521,8 @@ export function autofillCurrentPage(profile: CandidateProfile): AutofillResult {
     // 14. Carta de Apresentação / Cover Letter
     if (/carta|cover.?letter|motiva/i.test(tag) && el.tagName === 'TEXTAREA') {
       const coverText = profile.summary.coverLetterSnippet || profile.summary.shortSummary;
-      if (coverText && setNativeValue(el, coverText)) {
-        totalFilled++;
-        fieldsFilled.push('Carta de Apresentação');
+      if (coverText && setNativeValue(el, coverText, dryRun)) {
+        recordFilled(fieldId, 'Carta de Apresentação');
         return;
       }
     }
@@ -529,15 +536,13 @@ export function autofillCurrentPage(profile: CandidateProfile): AutofillResult {
         const regex = new RegExp(`${escapeRegExp(cf.key).replace(/_/g, '.*')}|${escapeRegExp(cf.label)}`, 'i');
         if (regex.test(tag)) {
           if (el.tagName === 'SELECT') {
-            if (setSelectValue(el as HTMLSelectElement, cf.value)) {
-              totalFilled++;
-              fieldsFilled.push(cf.label);
+            if (setSelectValue(el as HTMLSelectElement, cf.value, dryRun)) {
+              recordFilled(fieldId, cf.label);
               return;
             }
           } else {
-            if (setNativeValue(el, cf.value)) {
-              totalFilled++;
-              fieldsFilled.push(cf.label);
+            if (setNativeValue(el, cf.value, dryRun)) {
+              recordFilled(fieldId, cf.label);
               return;
             }
           }
@@ -549,13 +554,12 @@ export function autofillCurrentPage(profile: CandidateProfile): AutofillResult {
       const question = normalizeStr(savedAnswer.question);
       if (!savedAnswer.reuseOnAnySite && savedAnswer.site.toLowerCase() !== window.location.hostname.toLowerCase()) continue;
       if (question.length < 4 || !normalizeStr(tag).includes(question)) continue;
-      if (setNativeValue(el, savedAnswer.answer)) {
-        totalFilled++;
-        fieldsFilled.push(`Resposta salva: ${savedAnswer.question}`);
+      if (setNativeValue(el, savedAnswer.answer, dryRun)) {
+        recordFilled(fieldId, `Resposta salva: ${savedAnswer.question}`);
         return;
       }
     }
   });
 
-  return { totalFilled, fieldsFilled, fieldsSkipped: Array.from(new Set(fieldsSkipped)) };
+  return { totalFilled, fieldsFilled, fillableFields, fieldsSkipped: Array.from(new Set(fieldsSkipped)), fieldsSkippedCount, fieldsDetected };
 }
