@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { CandidateProfile, CandidateProfileCollection } from './types/profile';
+import React, { useState, useEffect, useRef } from 'react';
+import { ApplicationListUpdater, CandidateProfile, CandidateProfileCollection } from './types/profile';
 import {
   loadCandidateProfileCollection,
   saveCandidateProfile,
@@ -36,6 +36,7 @@ export const App: React.FC = () => {
   const [autofillPreview, setAutofillPreview] = useState<AutofillPreview | null>(null);
   const [previewSite, setPreviewSite] = useState('');
   const [previewTabId, setPreviewTabId] = useState<number | null>(null);
+  const applicationSaveQueue = useRef<Promise<void>>(Promise.resolve());
 
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
     setStatusNotification({ message, type });
@@ -82,6 +83,20 @@ export const App: React.FC = () => {
   const handleSaveProfileCollection = async (updated: CandidateProfileCollection, sharedSourceId?: string) => {
     const saved = await saveCandidateProfileCollection(updated, sharedSourceId);
     setProfileCollection(saved);
+  };
+
+  const handleUpdateApplications = (update: ApplicationListUpdater): Promise<void> => {
+    const save = async () => {
+      const latest = await loadCandidateProfileCollection();
+      const saved = await saveCandidateProfileCollection({
+        ...latest,
+        applications: update(latest.applications || []),
+      }, latest.activeProfileId);
+      setProfileCollection(saved);
+    };
+    const pending = applicationSaveQueue.current.then(save);
+    applicationSaveQueue.current = pending.catch(() => undefined);
+    return pending;
   };
 
   const handleImportProfileCollection = async (updated: CandidateProfileCollection) => {
@@ -268,6 +283,7 @@ export const App: React.FC = () => {
         profileCollection={profileCollection}
         onSave={handleSaveProfile}
         onSaveProfileCollection={handleSaveProfileCollection}
+        onUpdateApplications={handleUpdateApplications}
         onImportProfileCollection={handleImportProfileCollection}
         onOpenSpotlight={() => setShowSpotlight(true)}
         onAutofillPage={handleAutofillActiveTab}

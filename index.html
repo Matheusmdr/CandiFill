@@ -1,54 +1,141 @@
 <!doctype html>
 <html lang="pt-BR" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/icons/icon48.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CandiFill</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="/popup-mode.js"></script>
+    <style>
+      *, *::before, *::after {
+        box-sizing: border-box;
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        min-height: 100%;
+        background-color: #09090b;
+        color: #f4f4f5;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
 
-<head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="/icons/icon48.png" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CandiFill — Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-    rel="stylesheet">
-  <style>
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-    }
+      html.is-popup {
+        width: 640px !important;
+        height: 600px !important;
+        max-width: 800px !important;
+        max-height: 600px !important;
+        overflow: hidden !important;
+      }
 
-    html,
-    body {
-      margin: 0;
-      padding: 0;
-      width: 100vw !important;
-      height: 100vh !important;
-      min-width: 100% !important;
-      min-height: 100% !important;
-      background-color: #09090b;
-      color: #f4f4f5;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      overflow: hidden !important;
-    }
+      html.is-popup body {
+        width: 640px !important;
+        height: 600px !important;
+        max-width: 800px !important;
+        max-height: 600px !important;
+        overflow: hidden !important;
+      }
 
-    #root {
-      width: 100% !important;
-      height: 100% !important;
-      min-width: 0 !important;
-      min-height: 0 !important;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-  </style>
-</head>
+      html.is-popup #root {
+        width: 100% !important;
+        height: 100% !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+      }
 
-<body class="bg-zinc-950 text-zinc-100 select-none">
-  <div id="root" class="w-full h-full flex flex-col overflow-hidden"></div>
-  <script type="module" src="/src/main.tsx"></script>
-</body>
+      @media (min-width: 560px) and (max-width: 639px) {
+        html.is-popup .app-sidebar {
+          width: 9rem !important;
+          padding: 0.75rem !important;
+        }
 
+        html.is-popup .app-sidebar button {
+          justify-content: flex-start !important;
+        }
+
+        html.is-popup .app-sidebar button > span {
+          display: inline !important;
+        }
+
+        html.is-popup .app-tab-content {
+          padding: 1.25rem !important;
+        }
+      }
+
+      @media (min-width: 640px) {
+        html.is-popup .app-sidebar {
+          width: 9rem !important;
+        }
+      }
+
+      @media (max-width: 380px) {
+        html.is-popup .popup-hide-narrow {
+          display: none !important;
+        }
+
+        html.is-popup .app-header {
+          gap: 4px !important;
+          padding-left: 8px !important;
+          padding-right: 8px !important;
+        }
+
+        html.is-popup .app-header-copy {
+          display: none !important;
+        }
+
+        html.is-popup .app-sidebar {
+          width: 100% !important;
+          height: 48px !important;
+          display: flex !important;
+          flex-direction: row !important;
+          align-items: center !important;
+          justify-content: space-around !important;
+          gap: 2px !important;
+          padding: 4px 8px !important;
+          border-right: 0 !important;
+          border-bottom: 1px solid var(--theme-border) !important;
+        }
+
+        html.is-popup .app-sidebar button {
+          width: auto !important;
+          height: 38px !important;
+          min-width: 0 !important;
+          max-width: 52px !important;
+          flex: 1 1 0 !important;
+          padding: 8px 4px !important;
+        }
+
+        html.is-popup .app-sidebar > div {
+          display: none !important;
+        }
+
+        html.is-popup .app-main-layout {
+          flex-direction: column !important;
+        }
+
+        html.is-popup .app-tab-content {
+          padding: 12px !important;
+        }
+      }
+
+      html:not(.is-popup), html:not(.is-popup) body {
+        width: 100vw !important;
+        height: 100vh !important;
+        min-width: 100% !important;
+        min-height: 100% !important;
+        overflow: hidden !important;
+      }
+    </style>
+  </head>
+  <body class="bg-zinc-950 text-zinc-100 select-none">
+    <div id="root" class="w-full h-full flex flex-col overflow-hidden"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

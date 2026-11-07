@@ -40,11 +40,5 @@ export default defineConfig({
     target: 'es2020',
     minify: 'esbuild',
     sourcemap: false,
-    rollupOptions: {
-      input: {
-        popup: path.resolve(__dirname, 'popup.html'),
-        index: path.resolve(__dirname, 'index.html'),
-      },
-    },
   },
 });

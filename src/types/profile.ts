@@ -88,6 +88,8 @@ export interface ApplicationRecord {
   updatedAt: string;
 }
 
+export type ApplicationListUpdater = (applications: ApplicationRecord[]) => ApplicationRecord[];
+
 export interface SiteFieldMapping {
   id: string;
   site: string;

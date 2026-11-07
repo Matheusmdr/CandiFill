@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { BriefcaseBusiness, CalendarDays, ExternalLink, Plus, Search, Trash2 } from 'lucide-react';
-import { ApplicationRecord, ApplicationStatus, CandidateProfileEntry } from '../types/profile';
+import { ApplicationListUpdater, ApplicationRecord, ApplicationStatus, CandidateProfileEntry } from '../types/profile';
 import { useLocale } from '../contexts/LocaleContext';
 
 interface Props {
   applications: ApplicationRecord[];
   profiles: CandidateProfileEntry[];
   activeProfileId: string;
-  onChange: (applications: ApplicationRecord[]) => Promise<void>;
+  onChange: (update: ApplicationListUpdater) => Promise<void>;
 }
 
 const STATUSES: ApplicationStatus[] = ['saved', 'applied', 'interview', 'offer', 'rejected', 'withdrawn'];
@@ -25,12 +25,14 @@ export const ApplicationTracker: React.FC<Props> = ({ applications, profiles, ac
     .filter((item) => `${item.company} ${item.role}`.toLowerCase().includes(query.toLowerCase().trim()))
     .sort((a, b) => b.appliedAt.localeCompare(a.appliedAt)), [applications, query, statusFilter]);
 
-  const updateApplications = async (next: ApplicationRecord[]) => {
+  const updateApplications = async (update: ApplicationListUpdater): Promise<boolean> => {
     try {
-      await onChange(next);
+      await onChange(update);
       setError('');
+      return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Não foi possível salvar as candidaturas.'));
+      return false;
     }
   };
 
@@ -47,13 +49,14 @@ export const ApplicationTracker: React.FC<Props> = ({ applications, profiles, ac
       notes: draft.notes.trim(),
       updatedAt: new Date().toISOString(),
     };
-    await updateApplications([record, ...applications]);
+    const saved = await updateApplications((current) => [record, ...current]);
+    if (!saved) return;
     setDraft({ company: '', role: '', url: '', appliedAt: new Date().toISOString().slice(0, 10), status: 'saved', profileId: activeProfileId, notes: '' });
     setIsAdding(false);
   };
 
   const updateRecord = (id: string, patch: Partial<ApplicationRecord>) => {
-    void updateApplications(applications.map((item) => item.id === id ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item));
+    void updateApplications((current) => current.map((item) => item.id === id ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item));
   };
 
   const statusLabel: Record<ApplicationStatus, string> = {
@@ -83,7 +86,7 @@ export const ApplicationTracker: React.FC<Props> = ({ applications, profiles, ac
       <div className="flex flex-wrap gap-2"><label className="relative min-w-48 flex-1"><Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('Buscar empresa ou vaga')} className="w-full rounded-lg border border-zinc-800 bg-zinc-950 py-2 pl-8 pr-3 text-xs text-zinc-100" /></label><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ApplicationStatus | 'all')} aria-label={t('Filtrar por etapa')} className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-100"><option value="all">{t('Todas as etapas')}</option>{STATUSES.map((status) => <option key={status} value={status}>{statusLabel[status]}</option>)}</select></div>
 
       {visibleApplications.length === 0 ? <div className="rounded-xl border border-dashed border-zinc-800 p-8 text-center text-xs text-zinc-500">{applications.length ? t('Nenhuma candidatura corresponde à busca.') : t('Ainda não há candidaturas registradas.')}</div> : <ul className="space-y-2">{visibleApplications.map((item) => <li key={item.id} className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-3.5">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h3 className="text-sm font-semibold text-zinc-100">{item.role}</h3><p className="mt-0.5 text-xs text-zinc-400">{item.company}</p><p className="mt-1 flex items-center gap-1 text-[10px] text-zinc-500"><CalendarDays className="h-3 w-3" />{item.appliedAt} · {profiles.find((profile) => profile.id === item.profileId)?.name || item.profileName || t('Perfil removido')}</p></div><div className="flex items-center gap-2"><select value={item.status} onChange={(event) => updateRecord(item.id, { status: event.target.value as ApplicationStatus })} aria-label={t('Etapa de {role}', { role: item.role })} className="rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-[10px] text-zinc-200">{STATUSES.map((status) => <option key={status} value={status}>{statusLabel[status]}</option>)}</select>{item.url && <a href={item.url} target="_blank" rel="noreferrer" aria-label={t('Abrir link da vaga')} className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"><ExternalLink className="h-3.5 w-3.5" /></a>}<button type="button" onClick={() => void updateApplications(applications.filter((application) => application.id !== item.id))} aria-label={t('Excluir candidatura')} className="rounded-md p-1.5 text-zinc-500 hover:bg-rose-950/40 hover:text-rose-300"><Trash2 className="h-3.5 w-3.5" /></button></div></div>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h3 className="text-sm font-semibold text-zinc-100">{item.role}</h3><p className="mt-0.5 text-xs text-zinc-400">{item.company}</p><p className="mt-1 flex items-center gap-1 text-[10px] text-zinc-500"><CalendarDays className="h-3 w-3" />{item.appliedAt} · {profiles.find((profile) => profile.id === item.profileId)?.name || item.profileName || t('Perfil removido')}</p></div><div className="flex items-center gap-2"><select value={item.status} onChange={(event) => updateRecord(item.id, { status: event.target.value as ApplicationStatus })} aria-label={t('Etapa de {role}', { role: item.role })} className="rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-[10px] text-zinc-200">{STATUSES.map((status) => <option key={status} value={status}>{statusLabel[status]}</option>)}</select>{item.url && <a href={item.url} target="_blank" rel="noreferrer" aria-label={t('Abrir link da vaga')} className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"><ExternalLink className="h-3.5 w-3.5" /></a>}<button type="button" onClick={() => void updateApplications((current) => current.filter((application) => application.id !== item.id))} aria-label={t('Excluir candidatura')} className="rounded-md p-1.5 text-zinc-500 hover:bg-rose-950/40 hover:text-rose-300"><Trash2 className="h-3.5 w-3.5" /></button></div></div>
         <label className="mt-3 block space-y-1 text-[10px] text-zinc-500"><span>{t('Notas')}</span><textarea rows={1} defaultValue={item.notes} onBlur={(event) => { if (event.target.value !== item.notes) updateRecord(item.id, { notes: event.target.value }); }} className="w-full resize-y rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-2 text-xs text-zinc-300" /></label>
       </li>)}</ul>}
     </section>

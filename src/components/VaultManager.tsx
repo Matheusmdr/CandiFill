@@ -17,7 +17,7 @@ import {
   Users,
   ClipboardList,
 } from 'lucide-react';
-import { CandidateProfile, CandidateProfileCollection, ExperienceItem, EducationItem } from '../types/profile';
+import { ApplicationListUpdater, CandidateProfile, CandidateProfileCollection, ExperienceItem, EducationItem } from '../types/profile';
 import { createCandidateProfileCollectionBackup } from '../services/storage';
 import { CustomFieldsEditor } from './CustomFieldsEditor';
 import { AiEnhancerModal } from './AiEnhancerModal';
@@ -39,6 +39,7 @@ interface VaultManagerProps {
   profileCollection: CandidateProfileCollection;
   onSave: (updatedProfile: CandidateProfile, profileId?: string) => Promise<void>;
   onSaveProfileCollection: (collection: CandidateProfileCollection, sharedSourceId?: string) => Promise<void>;
+  onUpdateApplications: (update: ApplicationListUpdater) => Promise<void>;
   onImportProfileCollection: (collection: CandidateProfileCollection) => Promise<void>;
   onOpenSpotlight?: () => void;
   onAutofillPage?: () => void;
@@ -52,6 +53,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
   profileCollection,
   onSave,
   onSaveProfileCollection,
+  onUpdateApplications,
   onImportProfileCollection,
   onOpenSpotlight,
   onAutofillPage,
@@ -777,7 +779,7 @@ export const VaultManager: React.FC<VaultManagerProps> = ({
               applications={profileCollection.applications || []}
               profiles={profileCollection.profiles}
               activeProfileId={profileId}
-              onChange={(applications) => onSaveProfileCollection({ ...profileCollection, applications })}
+              onChange={onUpdateApplications}
             />
           )}
 
