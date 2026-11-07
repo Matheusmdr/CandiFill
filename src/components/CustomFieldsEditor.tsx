@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, Tag, Pencil, Check, X } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Plus, Trash2, Tag, Pencil, Check, X, Search } from 'lucide-react';
 import { CustomField, SavedAnswer } from '../types/profile';
 import { useLocale } from '../contexts/LocaleContext';
 
@@ -19,12 +19,23 @@ export const CustomFieldsEditor: React.FC<CustomFieldsEditorProps> = ({ fields, 
   const [newValue, setNewValue] = useState('');
   const [newCategory, setNewCategory] = useState<CustomField['category']>('Diversos');
   const [isAdding, setIsAdding] = useState(false);
+  const [answerSearch, setAnswerSearch] = useState('');
+  const [answerSiteFilter, setAnswerSiteFilter] = useState('all');
+  const [answerCategoryFilter, setAnswerCategoryFilter] = useState('all');
 
   // Estado para edição inline
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
   const [editCategory, setEditCategory] = useState<CustomField['category']>('Diversos');
   const [editValue, setEditValue] = useState('');
+
+  const savedAnswerSites = useMemo(() => Array.from(new Set(savedAnswers.map((answer) => answer.site).filter(Boolean))).sort(), [savedAnswers]);
+  const filteredAnswers = useMemo(() => savedAnswers.filter((answer) => {
+    const textMatches = `${answer.question} ${answer.answer}`.toLowerCase().includes(answerSearch.trim().toLowerCase());
+    const siteMatches = answerSiteFilter === 'all' || answer.site === answerSiteFilter;
+    const categoryMatches = answerCategoryFilter === 'all' || (answer.category || 'Geral') === answerCategoryFilter;
+    return textMatches && siteMatches && categoryMatches;
+  }), [savedAnswers, answerSearch, answerSiteFilter, answerCategoryFilter]);
 
   const handleAddField = () => {
     if (!newLabel.trim() || !newValue.trim()) return;
@@ -306,18 +317,25 @@ export const CustomFieldsEditor: React.FC<CustomFieldsEditorProps> = ({ fields, 
             {t("Respostas revisadas e salvas por site. Por padrão, só são reutilizadas no mesmo domínio; você pode liberar cada resposta para outros sites.")}
           </p>
         </div>
+        {savedAnswers.length > 0 && <div className="grid gap-2 sm:grid-cols-3">
+          <label className="relative"><Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" /><input value={answerSearch} onChange={(event) => setAnswerSearch(event.target.value)} placeholder={t('Buscar nas respostas')} className="w-full rounded-lg border border-zinc-800 bg-zinc-950 py-2 pl-8 pr-3 text-xs text-zinc-100" /></label>
+          <select value={answerSiteFilter} onChange={(event) => setAnswerSiteFilter(event.target.value)} aria-label={t('Filtrar por site')} className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-100"><option value="all">{t('Todos os sites')}</option>{savedAnswerSites.map((site) => <option key={site} value={site}>{site}</option>)}</select>
+          <select value={answerCategoryFilter} onChange={(event) => setAnswerCategoryFilter(event.target.value)} aria-label={t('Filtrar por categoria')} className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-100"><option value="all">{t('Todas as categorias')}</option>{Array.from(new Set(savedAnswers.map((answer) => answer.category || 'Geral'))).sort().map((category) => <option key={category} value={category}>{t(category)}</option>)}</select>
+        </div>}
         {savedAnswers.length === 0 ? (
           <div className="rounded-xl border border-dashed border-zinc-800 p-5 text-center text-xs text-zinc-500">
             {t("Nenhuma resposta salva ainda. O CandiFill pode sugerir respostas novas depois de um preenchimento.")}
           </div>
         ) : (
-          <div className="space-y-2">
-            {savedAnswers.map((answer) => (
+          filteredAnswers.length === 0 ? <div className="rounded-lg border border-dashed border-zinc-800 p-4 text-center text-xs text-zinc-500">{t('Nenhuma resposta corresponde aos filtros.')}</div> : <div className="space-y-2">
+            {filteredAnswers.map((answer) => (
               <article key={answer.id} className="flex items-start justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
                 <div className="min-w-0">
                   <h4 className="text-xs font-medium text-zinc-200">{answer.question}</h4>
                   <p className="mt-1 whitespace-pre-wrap break-words text-xs text-zinc-400">{answer.answer}</p>
                   {answer.site && <p className="mt-1 text-[10px] text-zinc-500">{t("Salva em")} {answer.site}</p>}
+                  {answer.lastUsedAt && <p className="mt-1 text-[10px] text-zinc-500">{t('Usada pela última vez')}: {new Date(answer.lastUsedAt).toLocaleDateString()}</p>}
+                  <label className="mt-2 flex items-center gap-2 text-[10px] text-zinc-400"><span>{t('Categoria')}</span><select value={answer.category || 'Geral'} onChange={(event) => onSavedAnswersChange(savedAnswers.map((item) => item.id === answer.id ? { ...item, category: event.target.value } : item))} className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1 text-[10px] text-zinc-200">{['Geral', 'Pessoal', 'Motivação', 'Experiência', 'Disponibilidade', 'Diversos'].map((category) => <option key={category} value={category}>{t(category)}</option>)}</select></label>
                   <label className="mt-2 flex items-center gap-1.5 text-[10px] text-zinc-400">
                     <input
                       type="checkbox"

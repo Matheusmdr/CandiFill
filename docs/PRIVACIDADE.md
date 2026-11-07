@@ -6,13 +6,13 @@ Esta política descreve o tratamento de dados na versão inicial do CandiFill. E
 
 ## Dados armazenados no navegador
 
-O CandiFill guarda no armazenamento local da extensão os dados que você insere ou importa para o cofre. Você pode manter vários perfis de candidatura. Contato, formação, configurações de IA e tema são compartilhados entre eles; resumos, experiência profissional, pretensões salariais, campos personalizados, respostas salvas e currículos pertencem a cada perfil. O cofre também guarda a chave de API configurada. Os perfis não são enviados a um servidor do CandiFill.
+O CandiFill guarda no armazenamento local da extensão os dados que você insere ou importa para o cofre. Você pode manter vários perfis de candidatura. Contato, formação, configurações de IA e tema são compartilhados entre eles; resumos, experiência profissional, pretensões salariais, campos personalizados, respostas salvas e currículos pertencem a cada perfil. O cofre também guarda a chave de API configurada. Registros de candidaturas (empresa, cargo, link, datas, etapa, notas e perfil usado) e mapeamentos de campos (domínio do site, identificador do campo e dado de perfil escolhido) também ficam locais. O mapeamento não guarda valores digitados no site. Os dados não são enviados a um servidor do CandiFill.
 
 A preferência de idioma da interface também é salva localmente na extensão.
 
 Quando um campo compatível estava vazio e você digita uma resposta elegível, a extensão pode criar uma sugestão para revisão. Para manter a sugestão disponível depois de uma navegação do formulário, ela fica temporariamente na sessão da extensão, associada à aba e ao domínio, por até 15 minutos. A sugestão só é gravada no perfil depois que você seleciona **Salvar**. Descartar a revisão remove a sugestão. O filtro automático pode não reconhecer todas as informações sensíveis; revise cada pergunta e resposta antes de salvar.
 
-O backup JSON é gerado localmente para você baixar. Ele pode conter todos os perfis, respostas salvas e currículos anexados, mas omite as chaves de API.
+O backup JSON é gerado localmente para você baixar. Ele pode conter todos os perfis, respostas salvas, currículos anexados, registros de candidaturas e mapeamentos de campos, mas omite as chaves de API.
 
 ## Dados enviados a provedores de IA
 
@@ -31,7 +31,7 @@ O provedor também recebe a chave de API necessária para autenticar a solicita�
 
 ## Dados de páginas de candidatura
 
-O content script é injetado na página ativa somente depois que você aciona o CandiFill ou o atalho de teclado. A captura passiva de respostas é armada apenas em páginas com sinais de candidatura; você também pode ativá-la ao usar o CandiFill. O script identifica campos de formulário e pode ler respostas elegíveis para criar uma sugestão local. O CandiFill não envia formulários nem os valores da página a um servidor próprio. Filtros podem deixar passar informações sensíveis, então revise as sugestões. A extensão trabalha principalmente com `input`, `textarea` e `select`.
+O content script é injetado na página ativa somente depois que você aciona o CandiFill ou o atalho de teclado. A captura passiva de respostas é armada apenas em páginas com sinais de candidatura; você também pode ativá-la ao usar o CandiFill. O script identifica campos de formulário e pode ler respostas elegíveis para criar uma sugestão local. Ao mapear manualmente um campo, o CandiFill guarda uma regra local para o domínio e o identificador do campo escolhido; essa regra não guarda o valor digitado na página. O CandiFill não envia formulários nem os valores da página a um servidor próprio. Filtros podem deixar passar informações sensíveis, então revise as sugestões. A extensão trabalha principalmente com `input`, `textarea` e `select`.
 
 ## Compartilhamento e telemetria
 

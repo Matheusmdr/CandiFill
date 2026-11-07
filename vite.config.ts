@@ -17,7 +17,7 @@ function extensionScriptsPlugin(): Plugin {
         minify: true,
       });
 
-      // 2. Background Service Worker
+      // 2. Background Script (para Firefox/Zen e navegadores compatíveis com MV3 background.scripts)
       await esbuild.build({
         entryPoints: [path.resolve(__dirname, 'src/background.ts')],
         bundle: true,
@@ -40,5 +40,11 @@ export default defineConfig({
     target: 'es2020',
     minify: 'esbuild',
     sourcemap: false,
+    rollupOptions: {
+      input: {
+        popup: path.resolve(__dirname, 'popup.html'),
+        index: path.resolve(__dirname, 'index.html'),
+      },
+    },
   },
 });

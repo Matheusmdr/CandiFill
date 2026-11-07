@@ -9,7 +9,13 @@ export function mergeSavedAnswers(existing: SavedAnswer[], incoming: SavedAnswer
   for (const answer of incoming) {
     const key = getSavedAnswerKey(answer.question, answer.site);
     const duplicateIndex = merged.findIndex((item) => getSavedAnswerKey(item.question, item.site) === key);
-    if (duplicateIndex >= 0) merged[duplicateIndex] = answer;
+    if (duplicateIndex >= 0) {
+      merged[duplicateIndex] = {
+        ...answer,
+        category: answer.category || merged[duplicateIndex].category,
+        lastUsedAt: answer.lastUsedAt || merged[duplicateIndex].lastUsedAt,
+      };
+    }
     else merged.push(answer);
   }
   return merged;

@@ -1,10 +1,12 @@
-import { loadCandidateProfile, saveCandidateProfile } from './services/storage';
+import { loadCandidateProfile, loadCandidateProfileCollection, saveCandidateProfile, saveCandidateProfileCollection } from './services/storage';
 import { autofillCurrentPage } from './services/autofill';
-import { CandidateProfile, PersonalInfo, SavedAnswer } from './types/profile';
+import { CandidateProfile, PersonalInfo, SavedAnswer, SiteFieldMapping } from './types/profile';
 import { CapturedProfileField, CapturedProfileFieldKey, getAnswerFieldQuestion, getAnswerFieldValue, getAnswerProfileField, getTrackedAnswerCaptureFields, isReusableAnswerQuestion, isSafeAnswerCaptureField } from './services/answerCapture';
 import { getSavedAnswerKey, mergeSavedAnswers } from './services/savedAnswers';
 import { normalizePendingAnswerCandidates } from './services/pendingAnswerReview';
-import { isLikelyJobApplicationPage } from './services/pageDetection';
+import { shouldSuggestAutofill } from './services/formDetection';
+import { startFieldMapping } from './services/fieldMappingOverlay';
+import { observeOpenShadowRoots } from './services/formFields';
 import { getBrowserLocale, loadPreferredLocale, LOCALE_STORAGE_KEY, Locale, translate, translatePlural } from './services/localization';
 
 let contentLocale: Locale = getBrowserLocale();
@@ -430,9 +432,13 @@ function showFloatingToast(message: string, isSuccess = true) {
 /**
  * Executa o preenchimento automático
  */
-async function triggerAutofill(customProfile?: CandidateProfile, selectedFieldIds?: string[]) {
+async function triggerAutofill(customProfile?: CandidateProfile, selectedFieldIds?: string[], suppliedMappings?: SiteFieldMapping[], suppliedProfileId?: string) {
   try {
-    const profile = customProfile || (await loadCandidateProfile({ allowLocalStorageFallback: false, includeApiKey: false }));
+    const collection = await loadCandidateProfileCollection({ allowLocalStorageFallback: false });
+    const activeEntry = collection.profiles.find((entry) => entry.id === collection.activeProfileId);
+    const profile = customProfile || activeEntry?.profile || (await loadCandidateProfile({ allowLocalStorageFallback: false, includeApiKey: false }));
+    const mappings = suppliedMappings || collection.siteFieldMappings || [];
+    const profileId = suppliedProfileId || activeEntry?.id || collection.activeProfileId;
     const hasProfileData = [
       ...Object.values(profile.personal),
       profile.salary.desiredSalary,
@@ -447,7 +453,7 @@ async function triggerAutofill(customProfile?: CandidateProfile, selectedFieldId
     if (!hasProfileData) {
       armAnswerCapture();
       showFloatingToast(t('Seu perfil ainda está vazio. Preencha o formulário e revise respostas novas para salvá-las.'), false);
-      return { totalFilled: 0, fieldsFilled: [], fillableFields: [], fieldsSkipped: [], fieldsSkippedCount: 0, fieldsDetected: 0 };
+      return { totalFilled: 0, fieldsFilled: [], fillableFields: [], fieldsSkipped: [], fieldsSkippedCount: 0, fieldsDetected: 0, unmatchedFields: [], usedSavedAnswerIds: [] };
     }
 
     // Nunca disponibiliza a chave de IA para a lógica executada na página.
@@ -455,8 +461,30 @@ async function triggerAutofill(customProfile?: CandidateProfile, selectedFieldId
       ...profile,
       aiConfig: { ...profile.aiConfig, apiKey: '' },
     };
-    const result = autofillCurrentPage(safeProfile, false, selectedFieldIds);
+    const result = autofillCurrentPage(safeProfile, false, selectedFieldIds, mappings, profileId);
     armAnswerCapture();
+
+    if (result.usedSavedAnswerIds.length > 0) {
+      try {
+        const latestCollection = await loadCandidateProfileCollection({ allowLocalStorageFallback: false });
+        const usedIds = new Set(result.usedSavedAnswerIds);
+        const updatedCollection = {
+          ...latestCollection,
+          profiles: latestCollection.profiles.map((entry) => entry.id === profileId ? {
+            ...entry,
+            profile: {
+              ...entry.profile,
+              savedAnswers: entry.profile.savedAnswers.map((answer) => usedIds.has(answer.id)
+                ? { ...answer, lastUsedAt: new Date().toISOString() }
+                : answer),
+            },
+          } : entry),
+        };
+        await saveCandidateProfileCollection(updatedCollection, latestCollection.activeProfileId);
+      } catch (error) {
+        console.warn('Could not record saved answer usage:', error);
+      }
+    }
 
     if (result.totalFilled > 0) {
       const preservedMessage = result.fieldsSkipped.length
@@ -476,7 +504,7 @@ async function triggerAutofill(customProfile?: CandidateProfile, selectedFieldId
     return result;
   } catch {
     showFloatingToast(t('Não foi possível acessar o perfil da extensão. Abra o cofre e tente novamente.'), false);
-    return { totalFilled: 0, fieldsFilled: [], fillableFields: [], fieldsSkipped: [], fieldsSkippedCount: 0, fieldsDetected: 0 };
+    return { totalFilled: 0, fieldsFilled: [], fillableFields: [], fieldsSkipped: [], fieldsSkippedCount: 0, fieldsDetected: 0, unmatchedFields: [], usedSavedAnswerIds: [] };
   }
 }
 
@@ -614,71 +642,37 @@ function injectFloatingButton() {
 /**
  * Mostra o atalho somente em páginas com campos de candidatura e contexto de vaga
  */
-function shouldSuggestAutofill(): boolean {
-  const fieldSelector = [
-    'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"])',
-    'textarea',
-    'select',
-    '[contenteditable="true"]',
-  ].join(',');
-  const visibleFields = Array.from(document.querySelectorAll<HTMLElement>(fieldSelector)).filter((field) => {
-    if ('disabled' in field && Boolean((field as HTMLInputElement).disabled)) return false;
-    const style = window.getComputedStyle(field);
-    return style.display !== 'none' && style.visibility !== 'hidden' && field.getClientRects().length > 0;
-  });
-
-  if (visibleFields.length < 2) return false;
-
-  const fieldContext = visibleFields.map((field) => {
-    const labels =
-      field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement
-        ? Array.from(field.labels || []).map((label) => label.innerText).join(' ')
-        : '';
-    const wrappingLabel = field.closest('label')?.innerText || '';
-    return [
-      field.getAttribute('name'),
-      field.id,
-      field.getAttribute('placeholder'),
-      field.getAttribute('aria-label'),
-      field.getAttribute('autocomplete'),
-      labels,
-      wrappingLabel,
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase();
-  });
-
-  const candidateFieldCount = fieldContext.filter((context) =>
-    /name|nome|email|e-mail|phone|telefone|mobile|resume|curr[ií]culo|curriculum|\bcv\b|linkedin|cover.?letter|carta.?de.?apresent|portfolio|website|address|endereco|endereço|salary|sal[aá]rio|experience|experi[eê]ncia|position|cargo/.test(
-      context
-    )
-  ).length;
-  if (candidateFieldCount < 2) return false;
-
-  const formContext = Array.from(document.forms)
-    .map((form) => `${form.getAttribute('action') || ''} ${form.innerText || ''}`)
-    .join(' ')
-    .slice(0, 10000);
-  const pageContext = `${window.location.href} ${document.title} ${formContext}`.toLowerCase();
-  return isLikelyJobApplicationPage(pageContext);
-}
-
 // 1. Ouve mensagens da extensão (popup, atalho ou background)
 if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message.action === 'START_FIELD_MAPPING' && message.profile) {
+      startFieldMapping(message.profile as CandidateProfile, String(message.profileId || ''), t, showFloatingToast);
+      sendResponse({ ok: true });
+      return false;
+    }
     if (message.action === 'AUTOFILL_PREVIEW') {
       const profile = message.profile as CandidateProfile;
       const safeProfile: CandidateProfile = {
         ...profile,
         aiConfig: { ...profile.aiConfig, apiKey: '' },
       };
-      sendResponse(autofillCurrentPage(safeProfile, true));
+      sendResponse(autofillCurrentPage(
+        safeProfile,
+        true,
+        undefined,
+        Array.isArray(message.siteFieldMappings) ? message.siteFieldMappings : [],
+        typeof message.profileId === 'string' ? message.profileId : ''
+      ));
       return false;
     }
 
     if (message.action === 'AUTOFILL') {
-      triggerAutofill(message.profile, Array.isArray(message.selectedFieldIds) ? message.selectedFieldIds : undefined).then((result) => {
+      triggerAutofill(
+        message.profile,
+        Array.isArray(message.selectedFieldIds) ? message.selectedFieldIds : undefined,
+        Array.isArray(message.siteFieldMappings) ? message.siteFieldMappings : undefined,
+        typeof message.profileId === 'string' ? message.profileId : undefined
+      ).then((result) => {
         sendResponse(result);
       });
       return true; // mantém canal aberto para resposta assíncrona
@@ -716,7 +710,11 @@ if (document.readyState === 'loading') {
 
 // Observa mudanças dinâmicas no DOM (ex: navegação de etapas de candidatura)
 let lastCheck = 0;
-const observer = new MutationObserver(() => {
+const observer = new MutationObserver((mutations) => {
+  // Open Shadow Roots need their own observer; document subtree observation does not pierce them.
+  mutations.forEach((mutation) => mutation.addedNodes.forEach((node) => {
+    if (node instanceof Element) observeOpenShadowRoots(observer, node, observedShadowRoots);
+  }));
   const now = Date.now();
   if (now - lastCheck > 2000) {
     lastCheck = now;
@@ -724,7 +722,10 @@ const observer = new MutationObserver(() => {
   }
 });
 
-observer.observe(document.body || document.documentElement, {
+const mutationRoot = document.body || document.documentElement;
+const observedShadowRoots = new WeakSet<ShadowRoot>();
+observer.observe(mutationRoot, {
   childList: true,
   subtree: true,
 });
+observeOpenShadowRoots(observer, mutationRoot, observedShadowRoots);

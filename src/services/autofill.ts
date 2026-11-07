@@ -1,4 +1,7 @@
 import { CandidateProfile, ResumeFile } from '../types/profile';
+import { SiteFieldMapping } from '../types/profile';
+import { getProfileFieldValue, matchesMappedField } from './siteFieldMappings';
+import { collectAutofillFields, getFormFieldLabel, isNativeFormField, queryDeepElements } from './formFields';
 
 /**
  * Remove acentos e normaliza para comparações semânticas tolerantes
@@ -36,10 +39,20 @@ function setNativeValue(
 ): boolean {
   if (!element || value === undefined || value === null) return false;
 
+  const combobox = element.getAttribute('role') === 'combobox'
+    ? element
+    : element.closest<HTMLElement>('[role="combobox"]');
+  if (combobox && setCustomComboboxValue(combobox, value, dryRun)) return true;
+
   // Se for um <select>, redireciona para a rotina especializada
   if (element.tagName === 'SELECT') {
     return setSelectValue(element as HTMLSelectElement, value, dryRun);
   }
+
+  const compatibleValue = element instanceof HTMLInputElement && element.type === 'number'
+    ? normalizeNumberValue(value)
+    : value;
+  if (compatibleValue === null) return false;
 
   if (dryRun) return true;
 
@@ -52,9 +65,9 @@ function setNativeValue(
     const descriptor = Object.getOwnPropertyDescriptor(prototype, 'value');
 
     if (descriptor && descriptor.set) {
-      descriptor.set.call(element, value);
+      descriptor.set.call(element, compatibleValue);
     } else {
-      element.value = value;
+      element.value = compatibleValue;
     }
 
     // Dispara eventos em cascata para validações de formulário
@@ -68,6 +81,156 @@ function setNativeValue(
     console.warn('CandiFill: Erro ao preencher elemento:', err);
     return false;
   }
+}
+
+function getCustomComboboxValue(element: HTMLElement): string {
+  const controlledFields = queryDeepElements<HTMLInputElement | HTMLTextAreaElement>(element, 'input:not([type="hidden"]), textarea');
+  const innerValue = controlledFields.find((field) => field.value.trim())?.value;
+  if (innerValue) return innerValue.trim();
+
+  const activeOptionId = element.getAttribute('aria-activedescendant');
+  if (activeOptionId) {
+    const activeOption = queryDeepElements<HTMLElement>(document, '[id]')
+      .find((candidate) => candidate.id === activeOptionId);
+    if (activeOption?.textContent?.trim()) return activeOption.textContent.trim();
+  }
+
+  const ariaValue = element.getAttribute('aria-valuetext')?.trim() || element.getAttribute('aria-valuenow')?.trim();
+  if (ariaValue) return ariaValue;
+  const valueContainer = element.cloneNode(true) as HTMLElement;
+  valueContainer.querySelectorAll('[role="listbox"], [role="option"]').forEach((option) => option.remove());
+  const textValue = (valueContainer.innerText || valueContainer.textContent || '').replace(/\s+/g, ' ').trim();
+  const placeholder = element.getAttribute('aria-placeholder') || element.getAttribute('placeholder') || element.getAttribute('data-placeholder') || '';
+  if (placeholder && normalizeStr(textValue) === normalizeStr(placeholder)) return '';
+  if (/^(select|choose|please select|selecion|escolha|selecione)\b/i.test(textValue)) return '';
+  return textValue;
+}
+
+function isVisibleElement(element: HTMLElement): boolean {
+  const style = window.getComputedStyle(element);
+  return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0' && element.getClientRects().length > 0;
+}
+
+function getComboboxOptions(element: HTMLElement): HTMLElement[] {
+  const controls = [element, ...queryDeepElements<HTMLElement>(element, 'input, [role="combobox"]')];
+  const controlledIds = new Set(controls.flatMap((control) =>
+    `${control.getAttribute('aria-controls') || ''} ${control.getAttribute('aria-owns') || ''}`
+      .split(/\s+/).filter(Boolean),
+  ));
+  const listboxes = queryDeepElements<HTMLElement>(document, '[role="listbox"]');
+  const relatedListboxes = listboxes.filter((listbox) => controlledIds.has(listbox.id));
+
+  let relevantListboxes = relatedListboxes;
+  if (relevantListboxes.length === 0) {
+    const localRoot = element.getRootNode();
+    const localListboxes = localRoot instanceof Document || localRoot instanceof ShadowRoot
+      ? queryDeepElements<HTMLElement>(localRoot, '[role="listbox"]')
+      : [];
+    const visibleLocalListboxes = localListboxes.filter(isVisibleElement);
+    if (visibleLocalListboxes.length === 1) {
+      relevantListboxes = visibleLocalListboxes;
+    } else {
+      const visiblePageListboxes = listboxes.filter(isVisibleElement);
+      if (visiblePageListboxes.length === 1) relevantListboxes = visiblePageListboxes;
+    }
+  }
+
+  const options = relevantListboxes.flatMap((listbox) =>
+    queryDeepElements<HTMLElement>(listbox, '[role="option"]'),
+  );
+  return Array.from(new Set(options));
+}
+
+function findComboboxOption(options: HTMLElement[], target: string | string[]): HTMLElement | null {
+  const targets = (Array.isArray(target) ? target : [target])
+    .flatMap((value) => [value, ...value.split(/\s+ou\s+|\s*\/\s*|\s*\|\s*/i)])
+    .map(normalizeStr)
+    .filter((value) => value.length > 1);
+  let bestOption: HTMLElement | null = null;
+  let bestScore = 0;
+
+  options.forEach((option) => {
+    if (option.getAttribute('aria-disabled') === 'true' || !isVisibleElement(option)) return;
+    const optionText = normalizeStr(option.innerText || option.textContent || '');
+    if (optionText.length < 2) return;
+    targets.forEach((value) => {
+      let score = 0;
+      if (optionText === value) score = 100;
+      else if (optionText.startsWith(value) || value.startsWith(optionText)) score = 88;
+      else if (optionText.includes(value)) score = 78;
+      else if (value.length >= 3 && value.includes(optionText)) score = 72;
+      if (score > bestScore) {
+        bestScore = score;
+        bestOption = option;
+      }
+    });
+  });
+
+  return bestScore >= 72 ? bestOption : null;
+}
+
+/**
+ * Handles accessible custom select widgets that expose role=combobox/listbox/option.
+ * Native inputs and selects keep using their existing setters when no option is found.
+ */
+function setCustomComboboxValue(element: HTMLElement, target: string | string[], dryRun = false): boolean {
+  if (element.getAttribute('role') !== 'combobox') return false;
+  const targetValues = (Array.isArray(target) ? target : [target]).filter((value) => value.trim());
+  if (targetValues.length === 0 || element.getAttribute('aria-disabled') === 'true') return false;
+  if (dryRun) return true;
+
+  try {
+    let option = findComboboxOption(getComboboxOptions(element), targetValues);
+    if (!option) {
+      element.focus();
+      element.click();
+      option = findComboboxOption(getComboboxOptions(element), targetValues);
+    }
+
+    if (option) {
+      option.click();
+      applyGlowEffect(element);
+      return true;
+    }
+
+    const editableField = queryDeepElements<HTMLInputElement | HTMLTextAreaElement>(element, 'input:not([type="hidden"]), textarea')
+      .find((field) => !field.readOnly && !field.disabled);
+    if (editableField) {
+      const prototype = Object.getPrototypeOf(editableField);
+      const descriptor = Object.getOwnPropertyDescriptor(prototype, 'value');
+      if (descriptor?.set) descriptor.set.call(editableField, targetValues[0]);
+      else editableField.value = targetValues[0];
+      editableField.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+      editableField.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+      editableField.dispatchEvent(new Event('blur', { bubbles: true, composed: true }));
+      applyGlowEffect(element);
+      return true;
+    }
+  } catch (error) {
+    console.warn('CandiFill: Erro ao selecionar uma opÃ§Ã£o personalizada:', error);
+  }
+
+  return false;
+}
+
+function normalizeNumberValue(value: string): string | null {
+  let normalized = value.trim().replace(/[^\d,.-]/g, '');
+  if (!normalized || !/\d/.test(normalized)) return null;
+  const comma = normalized.lastIndexOf(',');
+  const dot = normalized.lastIndexOf('.');
+  if (comma >= 0 && dot >= 0) {
+    normalized = comma > dot
+      ? normalized.replace(/\./g, '').replace(',', '.')
+      : normalized.replace(/,/g, '');
+  } else if (comma >= 0) {
+    const decimals = normalized.length - comma - 1;
+    normalized = decimals > 0 && decimals <= 2 ? normalized.replace(',', '.') : normalized.replace(/,/g, '');
+  } else if (dot >= 0) {
+    const pieces = normalized.split('.');
+    if (pieces.length > 2 || pieces.slice(1).every((part) => part.length === 3)) normalized = pieces.join('');
+  }
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? String(parsed) : null;
 }
 
 /**
@@ -222,6 +385,8 @@ export interface AutofillResult {
   fieldsSkipped: string[];
   fieldsSkippedCount: number;
   fieldsDetected: number;
+  unmatchedFields: string[];
+  usedSavedAnswerIds: string[];
 }
 
 function escapeRegExp(value: string): string {
@@ -244,15 +409,128 @@ function isUnconfirmedDefault(profile: CandidateProfile, key: string): boolean {
   return profile.unconfirmedDefaults.some((item) => item.key === key);
 }
 
+const PHONE_DIAL_CODE_ALIASES: Record<string, string[]> = {
+  '1': ['United States', 'Canada', 'US', 'CA'],
+  '7': ['Russia', 'Kazakhstan', 'RU', 'KZ'],
+  '27': ['South Africa', 'ZA'],
+  '30': ['Greece', 'GR'],
+  '31': ['Netherlands', 'Holland', 'NL'],
+  '32': ['Belgium', 'BE'],
+  '33': ['France', 'FR'],
+  '34': ['Spain', 'ES'],
+  '39': ['Italy', 'IT'],
+  '40': ['Romania', 'RO'],
+  '41': ['Switzerland', 'CH'],
+  '43': ['Austria', 'AT'],
+  '44': ['United Kingdom', 'UK', 'Great Britain', 'GB'],
+  '45': ['Denmark', 'DK'],
+  '46': ['Sweden', 'SE'],
+  '47': ['Norway', 'NO'],
+  '48': ['Poland', 'PL'],
+  '49': ['Germany', 'DE'],
+  '52': ['Mexico', 'MX'],
+  '54': ['Argentina', 'AR'],
+  '55': ['Brazil', 'Brasil', 'BR'],
+  '56': ['Chile', 'CL'],
+  '57': ['Colombia', 'CO'],
+  '58': ['Venezuela', 'VE'],
+  '60': ['Malaysia', 'MY'],
+  '61': ['Australia', 'AU'],
+  '62': ['Indonesia', 'ID'],
+  '63': ['Philippines', 'PH'],
+  '64': ['New Zealand', 'NZ'],
+  '65': ['Singapore', 'SG'],
+  '81': ['Japan', 'JP'],
+  '82': ['South Korea', 'Korea', 'KR'],
+  '86': ['China', 'CN'],
+  '91': ['India', 'IN'],
+  '351': ['Portugal', 'PT'],
+  '353': ['Ireland', 'IE'],
+  '358': ['Finland', 'FI'],
+};
+
+function getInternationalPhoneParts(phone: string, nationality = ''): { dialCode: string; localNumber: string } | null {
+  const trimmed = phone.trim();
+  const normalized = trimmed.replace(/[^\d+]/g, '');
+  const digits = normalized.startsWith('00') ? normalized.slice(2) : normalized.startsWith('+') ? normalized.slice(1) : '';
+  const country = normalizeStr(nationality);
+  const countryDialCodes: Record<string, string> = {
+    brazil: '55', brasil: '55', br: '55', portugal: '351', pt: '351',
+    'united states': '1', usa: '1', us: '1', canada: '1', ca: '1',
+    'united kingdom': '44', uk: '44', gb: '44', france: '33', fr: '33',
+    spain: '34', es: '34', germany: '49', de: '49', italy: '39', it: '39',
+    australia: '61', au: '61', japan: '81', jp: '81', india: '91', in: '91',
+  };
+  if (!digits) {
+    const dialCode = countryDialCodes[country];
+    return dialCode ? { dialCode, localNumber: trimmed } : null;
+  }
+  const knownCode = Object.keys(PHONE_DIAL_CODE_ALIASES).sort((a, b) => b.length - a.length).find((code) => digits.startsWith(code));
+  const explicitCountryCode = Boolean(normalized.startsWith('00') || normalized.startsWith('+'));
+  const dialCode = explicitCountryCode
+    ? knownCode || digits.slice(0, Math.min(3, digits.length))
+    : countryDialCodes[country];
+  if (!dialCode) return null;
+  if (!explicitCountryCode) return { dialCode, localNumber: trimmed };
+  const localDigits = digits.slice(dialCode.length);
+  const prefixPattern = normalized.startsWith('00') ? new RegExp(`^\\s*00\\s*\\+?\\s*${dialCode}`) : new RegExp(`^\\s*\\+\\s*${dialCode}`);
+  const localNumber = trimmed.replace(prefixPattern, '').trim().replace(/^[\s().-]+/, '') || localDigits;
+  return { dialCode, localNumber };
+}
+
+function isPhoneCountryField(tag: string): boolean {
+  const normalized = normalizeStr(tag);
+  const phone = /phone|telephone|mobile|celular|telefone|whatsapp/.test(normalized);
+  const country = /country|pais|codigo|code|ddi|dial|calling|prefix/.test(normalized);
+  return (phone && country) || /calling.?code|dial.?code|country.?code|phone.?country|ddi|prefixo.?telefon/.test(normalized);
+}
+
+function isPhoneCountryControl(element: HTMLElement, tag: string): boolean {
+  if (isPhoneCountryField(tag)) return true;
+  if (element.tagName !== 'SELECT') return false;
+  let container = element.parentElement;
+  for (let depth = 0; container && depth < 3 && container.tagName !== 'FORM'; depth++, container = container.parentElement) {
+    if (container.querySelector('input[type="tel"],input[name*="phone" i],input[name*="mobile" i]')) return true;
+  }
+  return false;
+}
+
+function isLikelyPhoneNumberField(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, tag: string): boolean {
+  const normalized = normalizeStr(tag);
+  if (/emergency|backup|alternative|company|office|contato de emergencia|recado/.test(normalized)) return false;
+  return /telefone|celular|phone|whatsapp|mobile/.test(normalized) ||
+    (element instanceof HTMLInputElement && element.type === 'tel');
+}
+
+function hasPhoneCountrySelector(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement): boolean {
+  const scope: ParentNode = element.closest('form') || element.closest('fieldset, [role="group"], .form-group, .field')?.parentElement || document;
+  return collectAutofillFields(scope)
+    .filter((control) => control !== element)
+    .some((control) => {
+      const context = [control.getAttribute('name'), control.id, getFormFieldLabel(control), control.closest('label,fieldset,[role="group"],.form-group,.field')?.textContent]
+        .filter(Boolean).join(' ');
+      return isPhoneCountryControl(control, context);
+    });
+}
+
+function getPhoneCountryTokens(phone: string, nationality = ''): string[] {
+  const parts = getInternationalPhoneParts(phone, nationality);
+  if (!parts) return [];
+  const aliases = PHONE_DIAL_CODE_ALIASES[parts.dialCode] || [];
+  return [`+${parts.dialCode}`, parts.dialCode, ...aliases];
+}
+
 /**
  * Varre o DOM da página atual e preenche automaticamente todos os campos compatíveis
  */
-export function autofillCurrentPage(profile: CandidateProfile, dryRun = false, selectedFieldIds?: string[]): AutofillResult {
-  const elements = Array.from(
-    document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
-      'input, textarea, select'
-    )
-  );
+export function autofillCurrentPage(
+  profile: CandidateProfile,
+  dryRun = false,
+  selectedFieldIds?: string[],
+  siteFieldMappings: SiteFieldMapping[] = [],
+  profileId = ''
+): AutofillResult {
+  const elements = collectAutofillFields();
 
   let totalFilled = 0;
   let fieldsDetected = 0;
@@ -260,15 +538,126 @@ export function autofillCurrentPage(profile: CandidateProfile, dryRun = false, s
   const fieldsFilled: string[] = [];
   const fillableFields: Array<{ id: string; label: string }> = [];
   const fieldsSkipped: string[] = [];
+  const unmatchedFields: string[] = [];
+  const usedSavedAnswerIds: string[] = [];
   const recordFilled = (id: string, label: string) => {
     totalFilled++;
     fieldsFilled.push(label);
     fillableFields.push({ id, label });
   };
 
-  elements.forEach((el, index) => {
+  elements.forEach((element, index) => {
     const fieldId = `field-${index}`;
     if (selectedFieldIds && !selectedFieldIds.includes(fieldId)) return;
+
+    if (!isNativeFormField(element)) {
+      const el = element;
+      const fieldLabel = getFormFieldLabel(el) || el.id || 'Campo sem rÃ³tulo';
+      if (el.getAttribute('aria-disabled') === 'true' || el.getAttribute('aria-readonly') === 'true' || !isFieldVisible(el)) return;
+      fieldsDetected++;
+
+      const currentValue = getCustomComboboxValue(el);
+      if (currentValue.trim()) {
+        fieldsSkipped.push(fieldLabel);
+        fieldsSkippedCount++;
+        return;
+      }
+
+      const parentText = el.closest('[role="group"], fieldset, .form-group, .field')?.textContent?.slice(0, 150) || '';
+      const tag = [
+        el.getAttribute('name'), el.id, el.getAttribute('placeholder'), el.getAttribute('aria-label'),
+        el.getAttribute('aria-labelledby'), el.getAttribute('autocomplete'), fieldLabel, parentText,
+      ].filter(Boolean).join(' ').toLowerCase();
+      const siteMapping = siteFieldMappings.find((mapping) =>
+        mapping.site === window.location.hostname.toLowerCase() &&
+        mapping.profileId === profileId &&
+        matchesMappedField(el, mapping.selector)
+      );
+      const mappedValue = siteMapping ? getProfileFieldValue(profile, siteMapping.sourceKey) : '';
+
+      let candidateValue: string | string[] = '';
+      let candidateLabel = fieldLabel;
+      let savedAnswerId = '';
+      if (siteMapping && mappedValue.trim()) {
+        candidateValue = mappedValue;
+        candidateLabel = siteMapping.sourceLabel || fieldLabel;
+      } else if (isPhoneCountryControl(el, tag)) {
+        candidateValue = getPhoneCountryTokens(profile.personal.phone, profile.personal.nationality);
+        candidateLabel = 'CÃ³digo do paÃ­s do telefone';
+      } else if (/nome|full.?name|first.?name|candidat/i.test(tag) && !/empresa|company|cargo|role/i.test(tag)) {
+        candidateValue = profile.personal.fullName;
+        candidateLabel = 'Nome Completo';
+      } else if (/e.?mail|best.?email/i.test(tag) && !/empresa|company/i.test(tag)) {
+        candidateValue = profile.personal.email;
+        candidateLabel = 'E-mail';
+      } else if (/telefone|celular|phone|whatsapp|mobile/i.test(tag)) {
+        candidateValue = profile.personal.phone;
+        candidateLabel = 'Telefone / WhatsApp';
+      } else if (/cidade|city|endere[cÃ§]o|localiza|address|location/i.test(tag) && !/empresa|company/i.test(tag)) {
+        candidateValue = profile.personal.location;
+        candidateLabel = 'LocalizaÃ§Ã£o';
+      } else if (/nacionalidade|nationality|pa[iÃ­]s|country/i.test(tag) && !/empresa|company/i.test(tag)) {
+        if (!isUnconfirmedDefault(profile, 'personal.nationality')) candidateValue = profile.personal.nationality;
+        candidateLabel = 'Nacionalidade';
+      } else if (/linkedin/i.test(tag)) {
+        candidateValue = profile.personal.linkedin;
+        candidateLabel = 'LinkedIn';
+      } else if (/github/i.test(tag)) {
+        candidateValue = profile.personal.github;
+        candidateLabel = 'GitHub';
+      } else if (/portf|website|homepage/i.test(tag)) {
+        candidateValue = profile.personal.portfolio;
+        candidateLabel = 'PortfÃ³lio / Site';
+      } else if (/contract|contrato|regime|tipo.?de.?contrat/i.test(tag)) {
+        if (!isUnconfirmedDefault(profile, 'salary.contractType') && !/pj.*clt|clt.*pj/i.test(profile.salary.contractType)) {
+          candidateValue = profile.salary.contractType;
+        }
+        candidateLabel = 'Modelo de ContrataÃ§Ã£o';
+      } else if (/escolaridade|grau|degree|educa[cÃ§]|forma[cÃ§][aÃ£]o/i.test(tag)) {
+        candidateValue = profile.education[0]?.degree || '';
+        candidateLabel = 'Grau de FormaÃ§Ã£o';
+      } else if (/disponibilidade|notice.?period|aviso.?pr[eÃ©]vio|in[iÃ­]cio/i.test(tag)) {
+        if (!isUnconfirmedDefault(profile, 'salary.availability')) candidateValue = profile.salary.availability;
+        candidateLabel = 'Disponibilidade';
+      } else if (/sal[aÃ¡]ri|pretens|desired.?salary|expected.?salary|salary/i.test(tag)) {
+        candidateValue = profile.salary.desiredSalary;
+        candidateLabel = 'PretensÃ£o Salarial';
+      } else {
+        const customField = profile.customFields.find((field) => {
+          if (!field.value || isUnconfirmedDefault(profile, `customFields.${field.id}`)) return false;
+          const matcher = new RegExp(`${escapeRegExp(field.key).replace(/_/g, '.*')}|${escapeRegExp(field.label)}`, 'i');
+          return matcher.test(tag);
+        });
+        if (customField) {
+          candidateValue = customField.value;
+          candidateLabel = customField.label;
+        } else {
+          const savedAnswer = (profile.savedAnswers || []).find((answer) => {
+            const question = normalizeStr(answer.question);
+            return (answer.reuseOnAnySite || answer.site.toLowerCase() === window.location.hostname.toLowerCase()) &&
+              question.length >= 4 && normalizeStr(tag).includes(question);
+          });
+          if (savedAnswer) {
+            candidateValue = savedAnswer.answer;
+            candidateLabel = `Resposta salva: ${savedAnswer.question}`;
+            savedAnswerId = savedAnswer.id;
+          }
+        }
+      }
+
+      const hasCandidate = Array.isArray(candidateValue)
+        ? candidateValue.some((value) => value.trim())
+        : candidateValue.trim().length > 0;
+      if (hasCandidate && setCustomComboboxValue(el, candidateValue, dryRun)) {
+        recordFilled(fieldId, candidateLabel);
+        if (!dryRun && savedAnswerId) usedSavedAnswerIds.push(savedAnswerId);
+      } else {
+        unmatchedFields.push(fieldLabel);
+      }
+      return;
+    }
+
+    const el = element;
     const input = el as HTMLInputElement;
     const fieldLabel = el.labels?.[0]?.textContent?.trim() ||
       el.getAttribute('aria-label') ||
@@ -368,6 +757,19 @@ export function autofillCurrentPage(profile: CandidateProfile, dryRun = false, s
       parentText
     ).toLowerCase();
 
+    const siteMapping = siteFieldMappings.find((mapping) =>
+      mapping.site === window.location.hostname.toLowerCase() &&
+      mapping.profileId === profileId &&
+      matchesMappedField(el, mapping.selector)
+    );
+    if (siteMapping) {
+      const mappedValue = getProfileFieldValue(profile, siteMapping.sourceKey);
+      if (mappedValue && setNativeValue(el, mappedValue, dryRun)) {
+        recordFilled(fieldId, siteMapping.sourceLabel || fieldLabel);
+        return;
+      }
+    }
+
     // 1. Nome Completo / First Name
     if (/nome|full.?name|first.?name|candidat/i.test(tag) && !/empresa|company|cargo|role/i.test(tag)) {
       if (profile.personal.fullName && setNativeValue(el, profile.personal.fullName, dryRun)) {
@@ -384,9 +786,27 @@ export function autofillCurrentPage(profile: CandidateProfile, dryRun = false, s
       }
     }
 
-    // 3. Telefone / Celular / WhatsApp
-    if (/telefone|celular|phone|whatsapp|mobile/i.test(tag)) {
-      if (profile.personal.phone && setNativeValue(el, profile.personal.phone, dryRun)) {
+    // InHire and other forms may separate the phone country code from the local number.
+    const phoneCountryField = isPhoneCountryControl(el, tag);
+    if (phoneCountryField) {
+      const countryTokens = getPhoneCountryTokens(profile.personal.phone, profile.personal.nationality);
+      if (countryTokens.length > 0) {
+        const dialCode = getInternationalPhoneParts(profile.personal.phone, profile.personal.nationality)?.dialCode || '';
+        const didFill = el instanceof HTMLSelectElement
+          ? setSelectValue(el, countryTokens, dryRun)
+          : setNativeValue(el, `+${dialCode}`, dryRun);
+        if (didFill) {
+          recordFilled(fieldId, 'Código do país do telefone');
+          return;
+        }
+      }
+    }
+
+    // 3. Phone / mobile / WhatsApp
+    if (isLikelyPhoneNumberField(el, tag) && !phoneCountryField) {
+      const phoneParts = getInternationalPhoneParts(profile.personal.phone, profile.personal.nationality);
+      const phoneValue = phoneParts && hasPhoneCountrySelector(el) ? phoneParts.localNumber : profile.personal.phone;
+      if (phoneValue && setNativeValue(el, phoneValue, dryRun)) {
         recordFilled(fieldId, 'Telefone / WhatsApp');
         return;
       }
@@ -401,7 +821,7 @@ export function autofillCurrentPage(profile: CandidateProfile, dryRun = false, s
     }
 
     // 5. Nacionalidade / País / Country (Suporta <select> ou input de texto)
-    if (/nacionalidade|nationality|pa[ií]s|country/i.test(tag) && !/empresa|company/i.test(tag)) {
+    if (!phoneCountryField && /nacionalidade|nationality|pa[ií]s|country/i.test(tag) && !/empresa|company/i.test(tag)) {
       const nat = profile.personal.nationality;
       if (!nat || isUnconfirmedDefault(profile, 'personal.nationality')) return;
       if (el.tagName === 'SELECT') {
@@ -442,7 +862,7 @@ export function autofillCurrentPage(profile: CandidateProfile, dryRun = false, s
     }
 
     // 9. Pretensão Salarial / Expectation
-    if (/sal[aá]ri|pretens|desired.?salary|expectation/i.test(tag)) {
+    if (/sal[aá]ri|pretens|desired.?salary|expected.?salary|salary(?:.?expectation)?|expectation/i.test(tag)) {
       if (profile.salary.desiredSalary && setNativeValue(el, profile.salary.desiredSalary, dryRun)) {
         recordFilled(fieldId, 'Pretensão Salarial');
         return;
@@ -556,10 +976,12 @@ export function autofillCurrentPage(profile: CandidateProfile, dryRun = false, s
       if (question.length < 4 || !normalizeStr(tag).includes(question)) continue;
       if (setNativeValue(el, savedAnswer.answer, dryRun)) {
         recordFilled(fieldId, `Resposta salva: ${savedAnswer.question}`);
+        if (!dryRun) usedSavedAnswerIds.push(savedAnswer.id);
         return;
       }
     }
+    unmatchedFields.push(fieldLabel);
   });
 
-  return { totalFilled, fieldsFilled, fillableFields, fieldsSkipped: Array.from(new Set(fieldsSkipped)), fieldsSkippedCount, fieldsDetected };
+  return { totalFilled, fieldsFilled, fillableFields, fieldsSkipped: Array.from(new Set(fieldsSkipped)), fieldsSkippedCount, fieldsDetected, unmatchedFields: Array.from(new Set(unmatchedFields)), usedSavedAnswerIds };
 }

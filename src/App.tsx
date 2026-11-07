@@ -25,6 +25,8 @@ export const App: React.FC = () => {
       createdAt: '',
       profile: DEFAULT_PROFILE,
     }],
+    applications: [],
+    siteFieldMappings: [],
   });
   const profile = profileCollection.profiles.find((entry) => entry.id === profileCollection.activeProfileId)?.profile || DEFAULT_PROFILE;
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -103,7 +105,12 @@ export const App: React.FC = () => {
         return;
       }
       const safeProfile: CandidateProfile = { ...profile, aiConfig: { ...profile.aiConfig, apiKey: '' } };
-      const preview = () => chrome.tabs.sendMessage(tab.id!, { action: 'AUTOFILL_PREVIEW', profile: safeProfile }, (result) => {
+      const preview = () => chrome.tabs.sendMessage(tab.id!, {
+        action: 'AUTOFILL_PREVIEW',
+        profile: safeProfile,
+        profileId: profileCollection.activeProfileId,
+        siteFieldMappings: profileCollection.siteFieldMappings || [],
+      }, (result) => {
         if (chrome.runtime.lastError) {
           chrome.scripting?.executeScript({ target: { tabId: tab.id! }, files: ['content.js'] }, () => {
             if (chrome.runtime.lastError) {
@@ -152,7 +159,7 @@ export const App: React.FC = () => {
         // Tenta enviar mensagem para o content script da aba
         chrome.tabs.sendMessage(
           tab.id,
-          { action: 'AUTOFILL', profile: sanitizedProfile, selectedFieldIds },
+          { action: 'AUTOFILL', profile: sanitizedProfile, selectedFieldIds, profileId: profileCollection.activeProfileId, siteFieldMappings: profileCollection.siteFieldMappings || [] },
           (response) => {
             if (chrome.runtime.lastError) {
               // Se o content script não estava pré-carregado nesta página
@@ -165,7 +172,13 @@ export const App: React.FC = () => {
                   if (chrome.runtime.lastError) {
                     showToast(t('Esta página protege o acesso a extensões.'), 'info');
                   } else {
-                    chrome.tabs.sendMessage(tab.id!, { action: 'AUTOFILL', profile: sanitizedProfile, selectedFieldIds }, (retryResponse) => {
+                    chrome.tabs.sendMessage(tab.id!, {
+                      action: 'AUTOFILL',
+                      profile: sanitizedProfile,
+                      selectedFieldIds,
+                      profileId: profileCollection.activeProfileId,
+                      siteFieldMappings: profileCollection.siteFieldMappings || [],
+                    }, (retryResponse) => {
                       if (chrome.runtime.lastError) {
                         showToast(t('Não foi possível preencher esta página. Tente novamente.'), 'error');
                       } else if (retryResponse?.totalFilled > 0) {
@@ -266,6 +279,22 @@ export const App: React.FC = () => {
           site={previewSite}
           onContinue={(selectedFieldIds) => { setAutofillPreview(null); void performAutofill(selectedFieldIds); }}
           onClose={() => { setAutofillPreview(null); setPreviewTabId(null); }}
+          onMapFields={() => {
+            if (previewTabId === null || typeof chrome === 'undefined' || !chrome.tabs?.sendMessage) return;
+            const safeProfile: CandidateProfile = { ...profile, aiConfig: { ...profile.aiConfig, apiKey: '' } };
+            chrome.tabs.sendMessage(previewTabId, {
+              action: 'START_FIELD_MAPPING',
+              profile: safeProfile,
+              profileId: profileCollection.activeProfileId,
+            }, (response) => {
+              if (chrome.runtime.lastError || !response?.ok) {
+                showToast(t('Não foi possível iniciar o mapeamento.'), 'error');
+              } else {
+                setAutofillPreview(null);
+                setPreviewTabId(null);
+              }
+            });
+          }}
           onReport={() => {
             const title = encodeURIComponent('Compatibility issue: job application form');
             const body = encodeURIComponent('Browser and version:\nJob application site (optional):\nWhat happened?\n\nPlease do not include resumes, API keys, form answers, or other personal information.');

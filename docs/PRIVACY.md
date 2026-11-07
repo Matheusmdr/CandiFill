@@ -6,13 +6,13 @@ This policy describes how the initial release of CandiFill handles data. It shou
 
 ## Data stored in your browser
 
-CandiFill stores the information you enter or import into your vault in the extension's local browser storage. You can keep multiple application profiles. Contact details, education, AI settings, and theme are shared across profiles; summaries, work experience, salary preferences, custom fields, saved answers, and resumes belong to each profile. The vault also stores the API key you configure. CandiFill does not send your profiles to its own server.
+CandiFill stores the information you enter or import into your vault in the extension's local browser storage. You can keep multiple application profiles. Contact details, education, AI settings, and theme are shared across profiles; summaries, work experience, salary preferences, custom fields, saved answers, and resumes belong to each profile. The vault also stores the API key you configure. Application records (company, role, link, dates, stage, notes, and profile used) and field mappings (site domain, field locator, and chosen profile field) are stored locally too. A field mapping stores no value entered on the job site. CandiFill does not send your profiles to its own server.
 
 Your interface language preference is also stored locally in the extension.
 
 When a compatible form field was empty and you enter an eligible answer, the extension may create a suggestion for you to review. To keep it available after the form navigates, the suggestion is stored temporarily in the extension session, associated with the tab and domain, for up to 15 minutes. It is only written to your profile after you select **Save**. Dismissing the review removes the suggestion. Automatic filters may miss sensitive information, so review each question and answer before saving.
 
-The JSON backup is created locally for you to download. It may contain all profiles, saved answers, and attached resumes, but it excludes API keys.
+The JSON backup is created locally for you to download. It may contain all profiles, saved answers, attached resumes, application records, and site field mappings, but it excludes API keys.
 
 ## Data sent to AI providers
 
@@ -29,7 +29,7 @@ The provider also receives the API key needed to authenticate the request. Befor
 
 ## Data from job application pages
 
-The content script is injected into the active webpage only after you invoke CandiFill or its keyboard shortcut. Passive answer capture is armed only on pages with job application signals; you can also arm it by using CandiFill manually. The script identifies form fields and may read an eligible answer you typed to create a local suggestion. CandiFill does not submit forms automatically or send page values to its own server. Values identified as sensitive are excluded, but the filter may miss some; review suggestions carefully. The extension primarily works with `input`, `textarea`, and `select` fields; special controls may not be processed.
+The content script is injected into the active webpage only after you invoke CandiFill or its keyboard shortcut. Passive answer capture is armed only on pages with job application signals; you can also arm it by using CandiFill manually. The script identifies form fields and may read an eligible answer you typed to create a local suggestion. When you manually map a site field, the selected profile value is used to create a local rule for that site's domain and field locator; the rule does not store the value typed into the page. CandiFill does not submit forms automatically or send page values to its own server. Values identified as sensitive are excluded, but the filter may miss some; review suggestions carefully. The extension primarily works with `input`, `textarea`, and `select` fields; special controls may not be processed.
 
 ## Sharing and analytics
 

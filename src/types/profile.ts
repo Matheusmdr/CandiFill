@@ -69,6 +69,40 @@ export interface SavedAnswer {
   site: string;
   reuseOnAnySite: boolean;
   createdAt: string;
+  category?: string;
+  lastUsedAt?: string;
+}
+
+export type ApplicationStatus = 'saved' | 'applied' | 'interview' | 'offer' | 'rejected' | 'withdrawn';
+
+export interface ApplicationRecord {
+  id: string;
+  company: string;
+  role: string;
+  url: string;
+  appliedAt: string;
+  status: ApplicationStatus;
+  profileId: string;
+  profileName: string;
+  notes: string;
+  updatedAt: string;
+}
+
+export interface SiteFieldMapping {
+  id: string;
+  site: string;
+  profileId: string;
+  selector: {
+    id: string;
+    name: string;
+    label: string;
+    tagName: string;
+    inputType: string;
+    role?: string;
+  };
+  sourceKey: string;
+  sourceLabel: string;
+  createdAt: string;
 }
 
 export interface UnconfirmedProfileValue {
@@ -113,6 +147,8 @@ export interface CandidateProfileCollection {
   schemaVersion: 1;
   activeProfileId: string;
   profiles: CandidateProfileEntry[];
+  applications?: ApplicationRecord[];
+  siteFieldMappings?: SiteFieldMapping[];
 }
 
 export interface FlattenedSearchItem {

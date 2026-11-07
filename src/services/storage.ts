@@ -1,4 +1,4 @@
-import { CandidateProfile, CandidateProfileCollection, CandidateProfileEntry, FlattenedSearchItem, SavedAnswer } from '../types/profile';
+import { ApplicationRecord, ApplicationStatus, CandidateProfile, CandidateProfileCollection, CandidateProfileEntry, FlattenedSearchItem, SavedAnswer, SiteFieldMapping } from '../types/profile';
 
 export const PROFILE_SCHEMA_VERSION = 2;
 
@@ -86,6 +86,10 @@ export function normalizeCandidateProfile(value: unknown): CandidateProfile {
         site: asString(answer.site),
         reuseOnAnySite: answer.reuseOnAnySite === true,
         createdAt: asString(answer.createdAt, new Date().toISOString()),
+        category: ['Geral', 'Pessoal', 'Motivação', 'Experiência', 'Disponibilidade', 'Diversos'].includes(asString(answer.category))
+          ? asString(answer.category)
+          : 'Geral',
+        ...(typeof answer.lastUsedAt === 'string' ? { lastUsedAt: answer.lastUsedAt } : {}),
       })).filter((answer) => answer.question.trim() && answer.answer.trim())
     : [];
   const experience = Array.isArray(source.experience) ? source.experience.filter(isRecord).map((item) => ({
@@ -219,6 +223,8 @@ function createDefaultProfileCollection(profile: CandidateProfile = DEFAULT_PROF
       createdAt: new Date().toISOString(),
       profile: normalized,
     }],
+    applications: [],
+    siteFieldMappings: [],
   };
 }
 
@@ -252,7 +258,52 @@ export function normalizeCandidateProfileCollection(
   const activeProfileId = profiles.some((entry) => entry.id === requestedActiveId)
     ? requestedActiveId
     : profiles[0].id;
-  return { schemaVersion: 1, activeProfileId, profiles };
+  const validStatuses: ApplicationStatus[] = ['saved', 'applied', 'interview', 'offer', 'rejected', 'withdrawn'];
+  const applications: ApplicationRecord[] = Array.isArray(value.applications)
+    ? value.applications.filter(isRecord).flatMap((entry) => {
+        const company = asString(entry.company).trim();
+        const role = asString(entry.role).trim();
+        if (!company || !role) return [];
+        const status = validStatuses.includes(entry.status as ApplicationStatus) ? entry.status as ApplicationStatus : 'saved';
+        return [{
+          id: asString(entry.id, createId('application')),
+          company: company.slice(0, 200),
+          role: role.slice(0, 200),
+          url: asString(entry.url).slice(0, 2000),
+          appliedAt: asString(entry.appliedAt, new Date().toISOString().slice(0, 10)),
+          status,
+          profileId: asString(entry.profileId, activeProfileId),
+          profileName: asString(entry.profileName, profiles.find((profile) => profile.id === entry.profileId)?.name || ''),
+          notes: asString(entry.notes).slice(0, 5000),
+          updatedAt: asString(entry.updatedAt, new Date().toISOString()),
+        }];
+      })
+    : [];
+  const siteFieldMappings: SiteFieldMapping[] = Array.isArray(value.siteFieldMappings)
+    ? value.siteFieldMappings.filter(isRecord).flatMap((entry) => {
+        if (!isRecord(entry.selector)) return [];
+        const site = asString(entry.site).toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
+        const sourceKey = asString(entry.sourceKey);
+        if (!site || !sourceKey) return [];
+        return [{
+          id: asString(entry.id, createId('mapping')),
+          site: site.slice(0, 253),
+          profileId: profiles.some((profile) => profile.id === entry.profileId) ? asString(entry.profileId) : activeProfileId,
+          selector: {
+            id: asString(entry.selector.id).slice(0, 200),
+            name: asString(entry.selector.name).slice(0, 200),
+            label: asString(entry.selector.label).trim().slice(0, 300),
+            tagName: asString(entry.selector.tagName).toLowerCase().slice(0, 20),
+            inputType: asString(entry.selector.inputType).toLowerCase().slice(0, 30),
+            role: asString(entry.selector.role).toLowerCase().slice(0, 40),
+          },
+          sourceKey: sourceKey.slice(0, 300),
+          sourceLabel: asString(entry.sourceLabel).slice(0, 200),
+          createdAt: asString(entry.createdAt, new Date().toISOString()),
+        }];
+      })
+    : [];
+  return { schemaVersion: 1, activeProfileId, profiles, applications, siteFieldMappings };
 }
 
 function syncSharedProfileData(
@@ -289,6 +340,8 @@ export function createCandidateProfileCollectionBackup(collection: CandidateProf
     format: 'candifill-profile-collection',
     schemaVersion: 1,
     activeProfileId: normalized.activeProfileId,
+    applications: normalized.applications || [],
+    siteFieldMappings: normalized.siteFieldMappings || [],
     profiles: normalized.profiles.map((entry) => ({
       ...entry,
       profile: createCandidateProfileBackup(entry.profile),

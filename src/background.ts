@@ -6,6 +6,9 @@ import {
   PENDING_ANSWER_REVIEW_STORAGE_KEY,
   readPendingAnswerReviewDraft,
 } from './services/pendingAnswerReview';
+import { loadCandidateProfileCollection, saveCandidateProfileCollection } from './services/storage';
+import { getProfileFieldChoices } from './services/siteFieldMappings';
+import { SiteFieldMapping } from './types/profile';
 
 let pendingReviewOperation = Promise.resolve();
 
@@ -40,6 +43,34 @@ async function writePendingReviewMap(reviews: Record<string, unknown>): Promise<
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const action = message?.action;
+  if (action === 'SAVE_SITE_FIELD_MAPPING') {
+    const context = getAnswerReviewContext(sender);
+    const mapping = message.mapping as SiteFieldMapping | undefined;
+    if (!context || !mapping || mapping.site !== context.site || typeof mapping.profileId !== 'string') {
+      sendResponse({ ok: false });
+      return false;
+    }
+    void loadCandidateProfileCollection({ allowLocalStorageFallback: false }).then(async (collection) => {
+      const profile = collection.profiles.find((entry) => entry.id === mapping.profileId)?.profile;
+      const choice = profile && getProfileFieldChoices(profile).find((item) => item.key === mapping.sourceKey);
+      if (!choice) return { ok: false };
+      const selector = mapping.selector;
+      const existing = collection.siteFieldMappings || [];
+      const sameTarget = (item: SiteFieldMapping) => item.site === mapping.site && item.profileId === mapping.profileId &&
+        item.selector.tagName === selector.tagName && item.selector.inputType === selector.inputType &&
+        (selector.id ? item.selector.id === selector.id : selector.name ? item.selector.name === selector.name : item.selector.label === selector.label);
+      const nextMapping = { ...mapping, sourceLabel: choice.label };
+      const updated = await saveCandidateProfileCollection({
+        ...collection,
+        siteFieldMappings: [...existing.filter((item) => !sameTarget(item)), nextMapping],
+      }, collection.activeProfileId);
+      return { ok: true, mappings: updated.siteFieldMappings };
+    }).then(sendResponse).catch((error: unknown) => {
+      sendResponse({ ok: false, error: String(error) });
+    });
+    return true;
+  }
+
   if (!['JOBFILL_STAGE_ANSWER_REVIEW', 'JOBFILL_GET_ANSWER_REVIEW', 'JOBFILL_CLEAR_ANSWER_REVIEW'].includes(action)) {
     return false;
   }

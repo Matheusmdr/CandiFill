@@ -95,6 +95,64 @@ describe('autofillCurrentPage', () => {
     expect(result.fieldsSkipped).toHaveLength(1);
   });
 
+  it('discovers and fills native fields inside an open Shadow Root', () => {
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    shadow.innerHTML = '<label for="shadow-email">Email</label><input id="shadow-email" name="email" type="email">';
+    document.body.append(host);
+    const profile = normalizeCandidateProfile({
+      ...DEFAULT_PROFILE,
+      personal: { ...DEFAULT_PROFILE.personal, email: 'ana@example.com' },
+    });
+
+    const preview = autofillCurrentPage(profile, true);
+    expect(preview.fillableFields.map((field) => field.label)).toEqual(['E-mail']);
+    expect((shadow.querySelector('#shadow-email') as HTMLInputElement).value).toBe('');
+
+    const result = autofillCurrentPage(profile);
+    expect((shadow.querySelector('#shadow-email') as HTMLInputElement).value).toBe('ana@example.com');
+    expect(result.totalFilled).toBe(1);
+  });
+
+  it('fills an accessible custom combobox using its saved field mapping', () => {
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    shadow.innerHTML = `
+      <div id="country" role="combobox" aria-label="Country" aria-expanded="true" aria-controls="country-list"></div>
+      <div id="country-list" role="listbox">
+        <div id="brazil-option" role="option">Brazil</div>
+        <div role="option">Canada</div>
+      </div>`;
+    document.body.append(host);
+    const option = shadow.querySelector('#brazil-option') as HTMLElement;
+    const clickHandler = vi.fn();
+    vi.spyOn(option, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
+    option.addEventListener('click', clickHandler);
+
+    const profile = normalizeCandidateProfile({
+      ...DEFAULT_PROFILE,
+      personal: { ...DEFAULT_PROFILE.personal, nationality: 'Brazil' },
+      unconfirmedDefaults: [],
+    });
+    const mapping = {
+      id: 'mapping-country',
+      site: window.location.hostname.toLowerCase(),
+      profileId: 'profile-default',
+      selector: {
+        id: 'country', name: '', label: 'Country', tagName: 'div', inputType: 'combobox', role: 'combobox',
+      },
+      sourceKey: 'personal.nationality',
+      sourceLabel: 'Nacionalidade',
+      createdAt: new Date().toISOString(),
+    };
+
+    const result = autofillCurrentPage(profile, false, undefined, [mapping], 'profile-default');
+
+    expect(clickHandler).toHaveBeenCalledOnce();
+    expect(result.fieldsFilled).toEqual(['Nacionalidade']);
+    expect(result.totalFilled).toBe(1);
+  });
+
   it('attaches the saved resume even when the file input is hidden', () => {
     document.body.innerHTML = `
       <form>
